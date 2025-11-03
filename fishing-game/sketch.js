@@ -1,13 +1,21 @@
-/* -----------------------------------------------------
-  p5.js Fishing (MVP)  —  controls:
-  ←/→ : move boat,  Space : drop/retract hook,
-  ↑/↓ : adjust tension (while hooked); ↑ also reels up.
------------------------------------------------------ */
+/* p5.js Fishing Game - MVP (index.html + sketch.js)
+   Controls:
+   Left/Right: move boat
+   Space: drop / reel
+   Up/Down: tension control while hooked
+   Enter / Click: start / restart
+*/
 
-let game; // holds state machine
+let game;
 
 function setup() {
-  createCanvas(900, 560);
+  const c = createCanvas(900, 560);
+  c.parent("wrap");
+
+  // ★ 포커스 강제 부여 (키 입력 인식 보장)
+  c.elt.tabIndex = 0;
+  c.elt.focus();
+
   game = new Game();
 }
 
@@ -16,507 +24,257 @@ function draw() {
   game.render();
 }
 
-// -------------------- Game State --------------------
+// ★ ENTER를 다양한 방식으로 인식
+function isEnter() {
+  return keyCode === ENTER || keyCode === 13 || key === 'Enter';
+}
+
+function keyPressed() {
+  if (game.state === "MENU" && isEnter()) game.start();
+  else if (game.state === "RESULT" && isEnter()) game.reset();
+
+  if (key === ' ') game.hook && game.hook.toggleDrop();
+}
+
+// ★ 클릭으로도 시작/재시작 가능 (포커스 문제 대비)
+function mousePressed() {
+  if (game.state === "MENU") game.start();
+  else if (game.state === "RESULT") game.reset();
+}
+
+/* ---------------- Core Game ---------------- */
+
 class Game {
   constructor() {
-    this.state = "MENU"; // MENU | PLAY | RESULT
-    this.timer = 60;     // seconds
+    this.state = "MENU";         // MENU | PLAY | RESULT
+    this.duration = 90;          // seconds
+    this.startMillis = 0;
+
     this.score = 0;
     this.best = 0;
-    this.boat = new Boat(width / 2, 110);
+    this.caught = 0;
+
+    this.boat = new Boat(width * 0.5, 90);
     this.hook = new Hook(this.boat);
+
     this.school = [];
-    this.fx = new FX();
-    this.spawnFishes(14);
-    this.countdownLast = millis();
+    this.spawnFishes(12);
+  }
+
+  start() {
+    this.state = "PLAY";
+    this.startMillis = millis();
   }
 
   reset() {
-    this.timer = 60;
+    this.state = "MENU";
     this.score = 0;
-    this.boat = new Boat(width / 2, 110);
-    this.hook = new Hook(this.boat);
+    this.caught = 0;
+    this.hook.reset(true);
     this.school = [];
-    this.spawnFishes(14);
-    this.state = "PLAY";
-    this.countdownLast = millis();
+    this.spawnFishes(12);
   }
 
-  spawnFishes(n) {
-    for (let i = 0; i < n; i++) {
-      const type = random(["small", "mid", "rare"]);
-      this.school.push(new Fish(random(width), random(220, height - 50), type));
-    }
+  spawnFishes(n) { for (let i = 0; i < n; i++) this.school.push(Fish.random()); }
+
+  timeLeft() {
+    if (this.state !== "PLAY") return this.duration;
+    const t = (millis() - this.startMillis) / 1000;
+    return max(0, this.duration - t);
   }
 
   update() {
+    if (this.state === "PLAY" && this.timeLeft() <= 0.01) {
+      this.state = "RESULT";
+      this.best = max(this.best, this.score);
+      this.hook.reset(true);
+    }
     if (this.state !== "PLAY") return;
 
-    // timer
-    const now = millis();
-    if (now - this.countdownLast >= 1000) {
-      this.timer--;
-      this.countdownLast = now;
-      if (this.timer <= 0) {
-        this.best = max(this.best, this.score);
-        this.state = "RESULT";
-      }
-    }
-
     this.boat.update();
+    for (const f of this.school) f.update();
     this.hook.update();
 
-    // fishes
-    for (const f of this.school) f.update();
-
-    // hook hit test
-    if (!this.hook.fish) {
+    if (!this.hook.fish && this.hook.mode === "DOWN") {
       for (const f of this.school) {
         if (!f.caught && dist(this.hook.x, this.hook.y, f.x, f.y) < this.hook.r + f.r) {
-          this.hook.hookFish(f);
+          this.hook.onHook(f);
           break;
         }
       }
     }
 
-    // land success
-    if (this.hook.landedFish) {
-      const f = this.hook.landedFish;
+    if (this.hook.fish && this.hook.y <= this.boat.hookY()) {
+      const f = this.hook.fish;
+      f.caught = true;
       this.score += f.score;
-      this.fx.pop(this.boat.x, this.boat.y + 10, `+${f.score}`);
-      // respawn that fish
-      const idx = this.school.indexOf(f);
-      if (idx >= 0) this.school.splice(idx, 1);
-      this.school.push(new Fish(random(width), random(220, height - 50), random(["small", "mid", "rare"])));
-      this.hook.landedFish = null;
+      this.caught += 1;
+      this.school = this.school.filter(x => x !== f);
+      this.school.push(Fish.random());
+      this.hook.reset(false);
     }
   }
 
   render() {
-    drawSea();
-    if (this.state === "MENU") this.drawMenu();
-    if (this.state === "PLAY") this.drawPlay();
-    if (this.state === "RESULT") this.drawResult();
-    this.fx.render();
-  }
+    this.drawBackground();
 
-  drawPlay() {
-    // seabed deco
-    drawSeabed();
-
-    // fishes
-    for (const f of this.school) f.draw();
-
-    // boat & hook/UI
-    this.boat.draw();
-    this.hook.draw();
-
-    // HUD
-    noStroke();
-    fill(255, 240);
-    rect(16, 16, 190, 70, 10);
-    fill(30);
-    textSize(16);
-    textStyle(BOLD);
-    text(`SCORE  ${nf(this.score, 4)}`, 28, 40);
-    text(`TIME   ${this.timer}s`, 28, 66);
-
-    // tension gauge when hooked
-    if (this.hook.fish) {
-      drawTension(this.hook.tension, this.hook.safeMin, this.hook.safeMax);
-    }
-  }
-
-  drawMenu() {
-    this.boat.draw();
-    this.hook.drawRopeOnly();
-
-    fill(255, 240);
-    rect(width / 2 - 260, height / 2 - 110, 520, 220, 18);
-    fill(20);
-    textAlign(CENTER, CENTER);
-    textSize(32);
-    textStyle(BOLD);
-    text("Fishing Day", width / 2, height / 2 - 35);
-    textSize(16);
-    textStyle(NORMAL);
-    text("←/→ 보트 이동   Space 훅 내리기/올리기   ↑/↓ 텐션 조절\n제한시간 안에 많이 잡아보세요!", width / 2, height / 2 + 10);
-    textSize(14);
-    text("Press ENTER to Start", width / 2, height / 2 + 60);
-    textAlign(LEFT, BASELINE);
-  }
-
-  drawResult() {
-    this.boat.draw();
-    this.hook.drawRopeOnly();
-
-    fill(255, 240);
-    rect(width / 2 - 260, height / 2 - 120, 520, 240, 18);
-    fill(20);
-    textAlign(CENTER, CENTER);
-    textSize(30);
-    textStyle(BOLD);
-    text("Result", width / 2, height / 2 - 55);
-    textSize(18);
-    textStyle(NORMAL);
-    text(`Score : ${this.score}\nBest  : ${this.best}`, width / 2, height / 2 + 0);
-    textSize(14);
-    text("ENTER: Restart   |   M: Menu", width / 2, height / 2 + 60);
-    textAlign(LEFT, BASELINE);
-  }
-}
-
-// -------------------- Boat --------------------
-class Boat {
-  constructor(x, y) {
-    this.x = x;
-    this.y = y;
-    this.speed = 4.2;
-  }
-  update() {
-    if (keyIsDown(LEFT_ARROW)) this.x -= this.speed;
-    if (keyIsDown(RIGHT_ARROW)) this.x += this.speed;
-    this.x = constrain(this.x, 60, width - 60);
-  }
-  draw() {
-    // simple cartoon boat
-    push();
-    translate(this.x, this.y);
-    noStroke();
-    // hull
-    fill(255, 140, 90);
-    rectMode(CENTER);
-    rect(0, 18, 160, 28, 12);
-    quad(-80, 18, 80, 18, 60, 36, -60, 36);
-    // cabin
-    fill(240);
-    rect(-20, -6, 70, 26, 6);
-    fill(80, 150, 250, 220);
-    rect(-30, -8, 18, 14, 3);
-    rect(-10, -8, 18, 14, 3);
-    // mast
-    stroke(80);
-    strokeWeight(3);
-    line(30, -35, 30, 15);
-    // bobbing
-    pop();
-  }
-}
-
-// -------------------- Hook (line + mini-game) --------------------
-class Hook {
-  constructor(boat) {
-    this.boat = boat;
-    this.surfaceY = boat.y + 36;
-    this.x = boat.x + 30;
-    this.y = this.surfaceY;
-    this.targetY = this.surfaceY;
-    this.dropSpeed = 6;
-    this.r = 10;
-
-    this.fish = null;         // currently hooked fish
-    this.landedFish = null;   // set when landed
-    this.tension = 0;         // 0..100
-    this.safeMin = 20;        // safe zone for steady reel
-    this.safeMax = 75;
-  }
-
-  toggleDrop() {
-    if (this.fish) return; // cannot toggle while fighting
-    // drop if near surface, else retract
-    if (this.targetY <= this.surfaceY + 5) {
-      this.targetY = height - 40; // drop
-    } else {
-      this.targetY = this.surfaceY; // retract
-    }
-  }
-
-  hookFish(f) {
-    f.caught = true;
-    this.fish = f;
-    this.tension = 50;
-  }
-
-  breakLine() {
-    // fail: fish escapes
-    if (this.fish) {
-      this.fish.escape();
-      this.fish = null;
-      this.tension = 0;
-      this.targetY = this.surfaceY; // retract automatically
-    }
-  }
-
-  landFish() {
-    // success
-    if (this.fish) {
-      this.fish.landed();
-      this.landedFish = this.fish;
-      this.fish = null;
-      this.tension = 0;
-    }
-  }
-
-  reelInput() {
-    // ↑ reduces tension & pulls up, ↓ increases a bit
-    let delta = 0;
-    if (keyIsDown(UP_ARROW)) delta -= 1.5;
-    if (keyIsDown(DOWN_ARROW)) delta += 1.0;
-    return delta;
-  }
-
-  update() {
-    // rope follows boat
-    this.x = this.boat.x + 30;
-
-    // free dropping/retracting when no fish
-    if (!this.fish) {
-      const dir = this.targetY - this.y;
-      this.y += constrain(dir, -this.dropSpeed, this.dropSpeed);
-      // clamp
-      this.y = constrain(this.y, this.surfaceY, height - 30);
+    if (this.state === "MENU") {
+      this.drawTitle("FISHING DAY");
+      this.drawSub("←/→ 이동, SPACE 낚시, ↑/↓ 텐션, ENTER 또는 클릭 시작");
       return;
     }
 
-    // fighting mini-game
-    const f = this.fish;
+    noStroke(); fill(16, 100, 120); rect(0, height - 60, width, 60);
+    for (const f of this.school) f.draw();
+    this.boat.draw();
+    this.hook.draw();
+    this.drawUI();
 
-    // fish random force (harder for rarer fish)
-    const jitter = (noise(frameCount * 0.07 + f.seed) - 0.5) * f.strength * 1.4;
-    const surge = sin(frameCount * (0.05 + f.strength * 0.01)) * f.strength * 0.4;
-    this.tension += jitter + surge;
-
-    // player input effect
-    this.tension += this.reelInput();
-
-    // natural relaxation
-    this.tension -= 0.3;
-    this.tension = constrain(this.tension, 0, 100);
-
-    // move hook and fish together (if safe, reel up)
-    if (this.tension >= 100) this.breakLine();
-
-    // safe zone: slow reel up
-    const inSafe = this.tension > this.safeMin && this.tension < this.safeMax;
-    if (inSafe && keyIsDown(UP_ARROW)) {
-      this.y -= 2.2;
-      f.y = this.y; f.x += (this.x - f.x) * 0.15;
-    } else {
-      // fish drags around the hook
-      const pull = map(this.tension, 0, 100, 0.4, 3.0);
-      const angle = noise(frameCount * 0.05 + f.seed) * TAU;
-      this.x += cos(angle) * pull * 0.4;
-      this.y += sin(angle) * pull * 0.3;
-      f.x += (this.x - f.x) * 0.25;
-      f.y += (this.y - f.y) * 0.25;
+    if (this.state === "RESULT") {
+      this.drawTitle("TIME UP!");
+      this.drawSub(`SCORE ${this.score}  |  BEST ${this.best}  |  ENTER/클릭 재시작`);
     }
-
-    // boundaries
-    this.x = constrain(this.x, 20, width - 20);
-    this.y = constrain(this.y, this.surfaceY, height - 30);
-
-    // landed?
-    if (this.y <= this.surfaceY + 2) this.landFish();
   }
 
-  draw() {
-    // rope
-    stroke(60);
-    strokeWeight(2);
-    line(this.boat.x + 30, this.surfaceY - 10, this.x, this.y - 8);
-
-    // hook head
+  drawBackground() {
     noStroke();
-    fill(240);
-    circle(this.x, this.y, this.r * 2);
-    stroke(60);
-    strokeWeight(3);
-    noFill();
-    arc(this.x, this.y + 6, 20, 16, 0, PI); // little hook shape
+    for (let y = 0; y < height; y++) {
+      const c = lerpColor(color(120, 200, 255), color(10, 140, 210), y / height);
+      stroke(c); line(0, y, width, y);
+    }
+    stroke(255, 255, 255, 60); strokeWeight(3);
+    const surfaceY = this.boat.y + 20;
+    for (let x = 0; x < width; x += 16) {
+      const y = surfaceY + sin((frameCount * 0.05 + x) * 0.05) * 3;
+      line(x, y, x + 12, y);
+    }
   }
 
-  drawRopeOnly() {
-    stroke(60);
-    strokeWeight(2);
-    line(this.boat.x + 30, this.surfaceY - 10, this.x, this.y - 8);
+  drawUI() {
+    noStroke(); fill(0, 60); rect(0, 0, width, 40);
+    const t = this.timeLeft();
+    fill(255); textAlign(LEFT, CENTER); textSize(16);
+    text(`TIME ${nf(floor(t / 60), 2)}:${nf(floor(t % 60), 2)}`, 12, 20);
+    textAlign(CENTER, CENTER); text(`SCORE ${this.score}`, width / 2, 20);
+    textAlign(RIGHT, CENTER); text(`CAUGHT ${this.caught}`, width - 12, 20);
+
+    if (this.hook.fish) {
+      const w = 260, h = 16, x = width / 2 - w / 2, y = 50;
+      fill(0, 120); rect(x, y, w, h, 8);
+      fill(80, 220, 120, 160); rect(x + w * 0.25, y, w * 0.5, h, 8);
+      fill(255); const k = this.hook.tension / 100; rect(x, y, w * k, h, 8);
+      noStroke(); fill(255); textAlign(CENTER, TOP); text("TENSION", width / 2, y + h + 4);
+    }
   }
+
+  drawTitle(s) {
+    fill(0, 140); rect(0, 0, width, height);
+    textAlign(CENTER, CENTER); fill(255); textSize(52); textStyle(BOLD);
+    text(s, width / 2, height / 2 - 20);
+    textSize(18); textStyle(NORMAL);
+  }
+
+  drawSub(s) { textAlign(CENTER, CENTER); fill(240); textSize(18); text(s, width / 2, height / 2 + 24); }
 }
 
-// -------------------- Fish --------------------
-class Fish {
-  constructor(x, y, type = "small") {
-    this.x = x;
-    this.y = y;
-    this.type = type;
-    this.seed = random(1000);
-    this.caught = false;
-    this.dir = random([1, -1]);
-    if (type === "small") {
-      this.r = 12; this.speed = 1.5; this.strength = 8;  this.score = 50;
-      this.color = color(255, 180, 70);
-    } else if (type === "mid") {
-      this.r = 18; this.speed = 1.2; this.strength = 14; this.score = 120;
-      this.color = color(90, 200, 240);
-    } else {
-      this.r = 24; this.speed = 1.1; this.strength = 22; this.score = 300; // rare
-      this.color = color(180, 120, 255);
-    }
-  }
+/* ---------------- Entities ---------------- */
 
+class Boat {
+  constructor(x, y) { this.x = x; this.y = y; this.speed = 4.2; }
   update() {
-    if (this.caught) return; // follow hook while caught (handled by Hook)
-
-    // wandering swim
-    const nx = noise(frameCount * 0.01 + this.seed);
-    const ny = noise(frameCount * 0.015 + this.seed + 99);
-    this.x += (nx - 0.5) * 4 * this.speed * this.dir;
-    this.y += (ny - 0.5) * 3 * this.speed;
-
-    // bounds + gentle current
-    this.x += sin(frameCount * 0.003 + this.seed) * 0.6;
-    this.y += sin(frameCount * 0.004 + this.seed) * 0.5;
-
-    if (this.x < 20 || this.x > width - 20) this.dir *= -1;
-    this.x = constrain(this.x, 20, width - 20);
-    this.y = constrain(this.y, 210, height - 30);
+    if (keyIsDown(LEFT_ARROW) || keyIsDown(65)) this.x -= this.speed;
+    if (keyIsDown(RIGHT_ARROW) || keyIsDown(68)) this.x += this.speed;
+    this.x = constrain(this.x, 80, width - 80);
   }
-
+  hookY() { return this.y + 26; }
   draw() {
-    push();
-    translate(this.x, this.y);
-    noStroke();
-    fill(this.color);
-    // body
-    ellipse(0, 0, this.r * 2.2, this.r * 1.4);
-    // tail
-    triangle(-this.r * 1.6, 0, -this.r * 0.8, -this.r * 0.7, -this.r * 0.8, this.r * 0.7);
-    // eye
-    fill(255);
-    circle(this.r * 0.6, -2, 6);
-    fill(20);
-    circle(this.r * 0.6, -2, 2.8);
-    pop();
-  }
-
-  escape() {
-    this.caught = false;
-    // dash away
-    this.x += random([-1, 1]) * 50;
-    this.y += random(-30, 30);
-  }
-
-  landed() {
-    this.caught = false;
-    // nothing else; Game will respawn
-  }
-}
-
-// -------------------- Visual FX --------------------
-class FX {
-  constructor() { this.items = []; }
-  pop(x, y, label) {
-    this.items.push({ x, y, a: 255, s: 1, t: label });
-  }
-  render() {
-    for (const it of this.items) {
-      it.y -= 0.6;
-      it.a -= 3;
-      it.s += 0.02;
-    }
-    this.items = this.items.filter(it => it.a > 0);
-    push();
-    textAlign(CENTER, CENTER);
-    for (const it of this.items) {
-      fill(255, it.a);
-      textSize(18 * it.s);
-      textStyle(BOLD);
-      text(it.t, it.x, it.y);
-    }
+    push(); translate(this.x, this.y);
+    noStroke(); fill(250); rect(-70, -18, 140, 36, 12);
+    fill(40, 120, 200); rect(-70, 0, 140, 18, 0, 0, 12, 12);
+    fill(255, 240, 220); rect(-20, -34, 46, 20, 6);
+    fill(40, 120, 200); circle(6, -24, 10);
+    stroke(60); strokeWeight(3); line(0, -36, 0, -60);
+    noStroke(); fill(230); circle(0, -60, 10);
     pop();
   }
 }
 
-// -------------------- Helpers & UI --------------------
-function keyPressed() {
-  if (keyCode === 32) { // Space
-    if (game.state === "PLAY") game.hook.toggleDrop();
+class Hook {
+  constructor(boat) { this.boat = boat; this.reset(true); }
+  reset(moveToBoat) {
+    this.mode = "UP"; this.fish = null; this.tension = 50;
+    this.lenMax = height - this.boat.y - 80;
+    this.dropSpeed = 5; this.reelSpeed = 3.6;
+    if (moveToBoat) { this.x = this.boat.x; this.y = this.boat.hookY(); }
   }
-  if (keyCode === ENTER) {
-    if (game.state === "MENU") game.reset();
-    else if (game.state === "RESULT") game.reset();
+  toggleDrop() {
+    if (game.state !== "PLAY") return;
+    if (this.fish) return;
+    this.mode = (this.mode === "DOWN") ? "UP" : "DOWN";
   }
-  if (key === 'M' || key === 'm') {
-    if (game.state === "RESULT") game.state = "MENU";
+  get r() { return 10; }
+  update() {
+    this.x = lerp(this.x, this.boat.x, 0.35);
+    if (this.mode === "DOWN") {
+      this.y += this.dropSpeed;
+      const maxY = this.boat.hookY() + this.lenMax;
+      if (this.y >= maxY) this.mode = "UP";
+    } else if (this.mode === "UP") {
+      this.y -= this.reelSpeed;
+      if (this.y <= this.boat.hookY()) this.y = this.boat.hookY();
+    } else if (this.mode === "HOOKED" && this.fish) {
+      const fish = this.fish;
+      const pull = (noise(frameCount * 0.06 + fish.noiseSeed) - 0.5) * fish.strength * 2.2;
+      let input = 0; if (keyIsDown(UP_ARROW)) input -= 2.6; if (keyIsDown(DOWN_ARROW)) input += 2.6;
+      this.tension = constrain(this.tension + pull + input, 0, 100);
+      if (this.tension > 20 && this.tension < 80) {
+        this.y -= this.reelSpeed * map(60 - abs(this.tension - 50), 10, 60, 0.6, 1.6, true);
+      }
+      if (this.tension >= 100) this.breakLine();
+      if (this.tension <= 0) this.escapeFish();
+      fish.x = lerp(fish.x, this.x, 0.2); fish.y = lerp(fish.y, this.y + 18, 0.2);
+    }
+  }
+  onHook(fish) { this.fish = fish; this.mode = "HOOKED"; this.tension = 55; fish.caught = true; }
+  breakLine() { game.score = max(0, game.score - 5); this.fish && (this.fish.caught = false); this.fish = null; this.mode = "DOWN"; this.tension = 50; }
+  escapeFish() { this.fish && (this.fish.caught = false); this.fish = null; this.mode = "DOWN"; this.tension = 50; }
+  draw() {
+    stroke(70); strokeWeight(2); line(this.boat.x, this.boat.hookY() - 32, this.x, this.y);
+    noStroke(); fill(230); circle(this.x, this.y, this.r * 2);
+    stroke(80); strokeWeight(3); noFill(); arc(this.x, this.y + 6, 16, 16, PI * 0.1, PI * 1.2);
   }
 }
 
-function drawSea() {
-  background(40, 170, 230);
-  noStroke();
-  // sky gradient
-  for (let i = 0; i < 160; i++) {
-    const c = lerpColor(color(180, 220, 255), color(90, 180, 255), i / 160);
-    stroke(c); line(0, i, width, i);
+class Fish {
+  constructor(x, y, r, speed, strength, score, hue) {
+    this.x = x; this.y = y; this.r = r;
+    this.vx = random([-1, 1]) * speed; this.vy = (random() - 0.5) * speed * 0.6;
+    this.baseSpeed = speed; this.strength = strength; this.score = score;
+    this.caught = false; this.hue = hue; this.noiseSeed = random(1000);
+    this.flip = this.vx < 0 ? -1 : 1;
   }
-  noStroke();
-  // parallax waves
-  for (let layer = 0; layer < 3; layer++) {
-    const baseY = 160 + layer * 18;
-    fill(20, 140 + layer * 10, 210, 140);
-    beginShape();
-    vertex(0, height);
-    for (let x = 0; x <= width; x += 8) {
-      const y = baseY + sin((frameCount * 0.02 + x * 0.02) + layer) * (6 + layer * 3);
-      vertex(x, y);
-    }
-    vertex(width, height);
-    endShape(CLOSE);
+  static random() {
+    const y = random(180, height - 90); const type = random();
+    if (type < 0.6) return new Fish(random(40, width - 40), y, 12, random(1.6, 2.2), 2.5, 5, color(255, 180, 80));
+    else if (type < 0.9) return new Fish(random(40, width - 40), y, 18, random(1.2, 1.8), 4, 12, color(120, 220, 180));
+    else return new Fish(random(40, width - 40), y, 26, random(0.9, 1.4), 5.5, 25, color(110, 140, 255));
   }
-}
-
-function drawSeabed() {
-  // corals / sand
-  noStroke();
-  fill(240, 200, 120, 200);
-  rect(0, height - 40, width, 40);
-  for (let i = 0; i < width; i += 60) {
-    fill(255, 170, 80, 200);
-    ellipse(i + 20, height - 28, 12, 12);
+  update() {
+    if (this.caught) return;
+    this.x += this.vx + sin(frameCount * 0.03 + this.noiseSeed) * 0.4;
+    this.y += this.vy + cos(frameCount * 0.02 + this.noiseSeed) * 0.3;
+    if (this.x < 20 || this.x > width - 20) this.vx *= -1;
+    if (this.y < 160 || this.y > height - 80) this.vy *= -1;
+    this.flip = this.vx < 0 ? -1 : 1;
   }
-  // some plants
-  for (let i = 0; i < width; i += 120) {
-    push();
-    translate(i + 40, height - 38);
-    stroke(40, 160, 100, 200);
-    strokeWeight(3);
-    noFill();
-    for (let k = 0; k < 4; k++) {
-      const h = 18 + k * 6;
-      bezier(0, 0, 6, -h * 0.3, -6, -h * 0.6, 0, -h);
-    }
+  draw() {
+    push(); translate(this.x, this.y); scale(this.flip, 1);
+    noStroke(); fill(this.hue);
+    ellipse(0, 0, this.r * 2.2, this.r * 1.3);
+    triangle(-this.r * 1.4, 0, -this.r * 2.0, -this.r * 0.5, -this.r * 2.0, this.r * 0.5);
+    fill(255); circle(this.r * 0.6, -this.r * 0.15, this.r * 0.35);
+    fill(40); circle(this.r * 0.6, -this.r * 0.15, this.r * 0.18);
+    if (this.score >= 20) { stroke(255, 220); noFill(); strokeWeight(1.2); ellipse(0, 0, this.r * 2.5, this.r * 1.5); }
     pop();
   }
-}
-
-function drawTension(val, safeMin, safeMax) {
-  const x = width - 220, y = 20, w = 200, h = 18;
-  noStroke();
-  fill(255, 240);
-  rect(x - 10, y - 10, w + 20, 56, 10);
-  fill(30);
-  textSize(14);
-  textStyle(BOLD);
-  text("TENSION", x - 2, y - 14);
-
-  // bar bg
-  fill(230);
-  rect(x, y, w, h, 6);
-
-  // safe zone
-  fill(120, 220, 140);
-  rect(x + (safeMin / 100) * w, y, (safeMax - safeMin) / 100 * w, h, 6);
-
-  // current
-  fill(240, 80, 80);
-  rect(x, y, (val / 100) * w, h, 6);
 }
