@@ -33,7 +33,6 @@ function mousePressed() {
   if (game.state === "MENU") game.start();
   else if (game.state === "RESULT") game.reset();
   else if (game.state === "PLAY") {
-    // 훅킹 중이 아닐 때만 캐스팅/회수
     if (!game.hook.fish) game.hook.toggleDrop();
   }
 }
@@ -297,22 +296,20 @@ class Game {
     } else {
       this.spaceSpamStreak = 0;
     }
-
-    // 연타가 5번 초과 시(6회 이상) 도망 확률
-    if (this.spaceSpamStreak > 5) {
-      const minEscapeChance = 0.2; // 6회
-      const maxEscapeChance = 0.8; // 12회
+    
+    if (this.spaceSpamStreak > 3) {
+      const minEscapeChance = 0.2;
+      const maxEscapeChance = 0.8;
       const k = map(this.spaceSpamStreak, 6, maxSpamStreak, 0, 1, true);
       const escapeChance = lerp(minEscapeChance, maxEscapeChance, k);
 
       if (random() < escapeChance) {
-        this.hook.forceEscape();   // 이 물고기 완전 놓침
+        this.hook.forceFullMiss();
         this.spaceSpamStreak = 0;
         return;
       }
     }
 
-    // 타이밍 판정
     const gx = this.gauge.x;
     const gw = this.gauge.w;
     const tolerance = this.gauge.currentTolerance;
@@ -320,15 +317,22 @@ class Game {
     const tt = (sin(this.gaugePhase) * 0.5 + 0.5);
     const markerX = lerp(gx - gw / 2 + 8, gx + gw / 2 - 8, tt);
 
-    if (abs(markerX - gx) <= tolerance) {
+    const timingSuccess = abs(markerX - gx) <= tolerance;
+
+    if (timingSuccess) {
+      // 성공 → 끌어올리기
       this.hook.pullStep();
       this.gaugeLastHit = millis();
+    } else {
+      const generalEscapeChance = 0.15;
+      if (random() < generalEscapeChance) {
+        this.hook.forceEscape();
+      }
     }
   }
 }
 
 /* ---------------- Boat ---------------- */
-
 class Boat {
   constructor(x, y) {
     this.x = x;
@@ -370,7 +374,6 @@ class Boat {
 }
 
 /* ---------------- Hook ---------------- */
-
 class Hook {
   constructor(boat) {
     this.boat = boat;
@@ -429,12 +432,18 @@ class Hook {
     fish.caught = true;
   }
 
-  // 연타 패널티: 물고기 놓침 + 빈 훅 회수
   forceEscape() {
     if (!this.fish) return;
-    this.fish.caught = false; // 다시 자유롭게
+    this.fish.caught = false;
     this.fish = null;
-    this.mode = "UP";         // 라인은 위로 감김
+    this.mode = "DOWN";
+  }
+
+  forceFullMiss() {
+    if (!this.fish) return;
+    this.fish.caught = false;
+    this.fish = null;
+    this.mode = "UP";
   }
 
   // 타이밍 성공 시 위로 당기기 (깊이 + 물고기 크기 반영)
@@ -476,7 +485,6 @@ class Hook {
 }
 
 /* ---------------- Fish ---------------- */
-
 class Fish {
   constructor(x, y, r, speed, strength, score, hue) {
     this.x = x;
