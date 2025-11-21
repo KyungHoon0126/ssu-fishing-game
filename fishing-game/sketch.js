@@ -122,6 +122,8 @@ class Game {
       for (const f of this.school) {
         if (!f.caught && dist(this.hook.x, this.hook.y, f.x, f.y) < this.hook.r + f.r) {
           this.hook.onHook(f);
+          this.gaugeLastHit = millis();
+          this.spaceSpamStreak = 0;
           break;
         }
       }
@@ -161,6 +163,12 @@ class Game {
       const sizeScale = lerp(minScale, maxScale, normR);
       g.w = g.baseW * sizeScale;
       g.h = g.baseH * sizeScale;
+
+      // 2초 동안 히트 없으면 이탈
+      const timeout = 2000;
+      if (this.gaugeLastHit > 0 && millis() - this.gaugeLastHit > timeout) {
+        this.hook.forceFullMiss();
+      }
     } else {
       this.gaugeActive = false;
     }
