@@ -122,7 +122,7 @@ class Game {
       for (const f of this.school) {
         if (!f.caught && dist(this.hook.x, this.hook.y, f.x, f.y) < this.hook.r + f.r) {
           this.hook.onHook(f);
-          this.gaugeLastHit = millis();
+          this.gaugeLastHit = millis();      // 훅킹 시 기준 시간
           this.spaceSpamStreak = 0;
           break;
         }
@@ -164,10 +164,10 @@ class Game {
       g.w = g.baseW * sizeScale;
       g.h = g.baseH * sizeScale;
 
-      // 2초 동안 히트 없으면 이탈
-      const timeout = 2000;
+      // 일정 시간 히트 없으면 이탈
+      const timeout = 2500;
       if (this.gaugeLastHit > 0 && millis() - this.gaugeLastHit > timeout) {
-        this.hook.forceFullMiss();
+        this.hook.forceEscape();
       }
     } else {
       this.gaugeActive = false;
@@ -325,11 +325,19 @@ class Game {
     const tt = (sin(this.gaugePhase) * 0.5 + 0.5);
     const markerX = lerp(gx - gw / 2 + 8, gx + gw / 2 - 8, tt);
 
-    const timingSuccess = abs(markerX - gx) <= tolerance;
+    const distCenter = abs(markerX - gx);
+    const timingSuccess = distCenter <= tolerance;
 
     if (timingSuccess) {
-      // 성공 → 끌어올리기
-      this.hook.pullStep();
+      let mul = 1.0;
+
+      const perfectThreshold = tolerance * 0.15;
+
+      if (distCenter <= perfectThreshold) {
+        mul = 1.4;
+      }
+
+      this.hook.pullStep(mul);
       this.gaugeLastHit = millis();
     } else {
       const generalEscapeChance = 0.15;
@@ -455,7 +463,7 @@ class Hook {
   }
 
   // 타이밍 성공 시 위로 당기기 (깊이 + 물고기 크기 반영)
-  pullStep() {
+  pullStep(mult = 1) {
     if (this.mode !== "HOOKED" || !this.fish) return;
 
     const distFromBoat = this.y - this.boat.hookY();
@@ -470,7 +478,7 @@ class Hook {
     );
     const sizeFactor = lerp(1.0, 0.6, sizeRatio);
 
-    const step = baseStep * sizeFactor;
+    const step = baseStep * sizeFactor * mult;
 
     this.y -= step;
     if (this.y < this.boat.hookY()) this.y = this.boat.hookY();
