@@ -1,6 +1,15 @@
 /* p5.js Fishing Game - Mouse Move + Space Timing */
 
 let game;
+let bgm;
+
+function preload() {
+  console.log("preload 시작");
+  bgm = loadSound("Resources/Out of Flux - CHONKLAP.mp3", 
+    () => console.log("bgm 로드 성공"),
+    (err) => console.error("bgm 로드 실패", err)
+  );
+}
 
 function setup() {
   const c = createCanvas(900, 560);
@@ -20,8 +29,16 @@ function isEnter() {
 }
 
 function keyPressed() {
-  if (game.state === "MENU" && isEnter()) game.start();
-  else if (game.state === "RESULT" && isEnter()) game.reset();
+  const lowerKey = (key || "").toLowerCase();
+
+  if (game.state === "MENU" && isEnter()) {
+    game.showInfo();
+  } else if (game.state === "INFO") {
+    if (isEnter()) game.start();
+    if (lowerKey === "x") game.closeInfo();
+  } else if (game.state === "RESULT" && isEnter()) {
+    game.reset();
+  }
 
   // 스페이스 → 타이밍 판정
   if (game.state === "PLAY" && key === " ") {
@@ -30,18 +47,42 @@ function keyPressed() {
 }
 
 function mousePressed() {
-  if (game.state === "MENU") game.start();
-  else if (game.state === "RESULT") game.reset();
-  else if (game.state === "PLAY") {
+  if (game.state === "MENU") {
+    const btn = game.menuButtonBounds();
+    if (game.isPointInRect(mouseX, mouseY, btn)) game.showInfo();
+  } else if (game.state === "INFO") {
+    const startBtn = game.infoStartButtonBounds();
+    const closeBtn = game.infoCloseButtonBounds();
+
+    if (game.isPointInRect(mouseX, mouseY, startBtn)) {
+      game.start();
+    } else if (game.isPointInRect(mouseX, mouseY, closeBtn)) {
+      game.closeInfo();
+    }
+  } else if (game.state === "RESULT") {
+    game.reset();
+  } else if (game.state === "PLAY") {
     if (!game.hook.fish) game.hook.toggleDrop();
   }
+}
+
+function mouseWheel(event) {
+  if (game.state !== "INFO" || game.infoScrollMax <= 0) return;
+  const scrollSpeed = 0.35;
+  const delta = event.delta || event.deltaY || 0;
+  game.infoScroll = constrain(
+    game.infoScroll + delta * scrollSpeed,
+    0,
+    game.infoScrollMax
+  );
+  return false;
 }
 
 /* ---------------- Game ---------------- */
 
 class Game {
   constructor() {
-    this.state = "MENU";      // MENU | PLAY | RESULT
+    this.state = "MENU";      // MENU | INFO | PLAY | RESULT
     this.duration = 90;
     this.startMillis = 0;
 
@@ -54,6 +95,25 @@ class Game {
 
     this.school = [];
     this.spawnFishes(12);
+
+    this.infoLines = [
+      "[게임 목표]",
+      "- 90초 안에 더 많은 물고기를 낚아 높은 점수를 노리세요.",
+      "",
+      "[조작법]",
+      "- 마우스 이동: 배 위치 조절",
+      "- 마우스 클릭: 낚싯바늘 올리기/내리기",
+      "- SPACE: 게이지 타이밍 성공 시 당기기",
+      "- ENTER: 선택/시작, X: 설명 닫기",
+      "",
+      "[TIP]",
+      "- 큰 물고기일수록 게이지 범위가 좁아집니다.",
+      "- 연타 페널티가 있으니 타이밍을 노려보세요."
+    ];
+
+    this.infoScroll = 0;
+    this.infoScrollMax = 0;
+    this.authorCredit = "20251669 김경훈\n20253308 강성준\n20241095 박규리";
 
     // 게이지 상태
     this.gauge = {
@@ -84,6 +144,25 @@ class Game {
   start() {
     this.state = "PLAY";
     this.startMillis = millis();
+
+    if (bgm && typeof bgm.isPlaying === "function" && typeof bgm.loop === "function") {
+      if (!bgm.isPlaying()) {
+        bgm.loop();          // 반복 재생
+        bgm.setVolume(0.4);  // 볼륨 조절
+      }
+    } else {
+      console.warn("BGM이 아직 준비되지 않았습니다.");
+    }
+  }
+
+  showInfo() {
+    this.state = "INFO";
+    this.infoScroll = 0;
+    this.infoScrollMax = 0;
+  }
+
+  closeInfo() {
+    this.state = "MENU";
   }
 
   reset() {
@@ -110,6 +189,11 @@ class Game {
       this.state = "RESULT";
       this.best = max(this.best, this.score);
       this.hook.reset(true);
+      if (bgm && typeof bgm.stop === "function" && typeof bgm.isPlaying === "function") {
+        if (bgm.isPlaying()) {
+          bgm.stop();
+        }
+      }
     }
     if (this.state !== "PLAY") return;
 
@@ -178,8 +262,12 @@ class Game {
     this.drawBackground();
 
     if (this.state === "MENU") {
-      this.drawTitle("FISHING DAY");
-      this.drawSub("마우스 이동 / 클릭 낚시 / SPACE 타이밍 / ENTER 시작");
+      this.drawMenuScreen();
+      return;
+    }
+
+    if (this.state === "INFO") {
+      this.drawInfoScreen();
       return;
     }
 
@@ -269,9 +357,189 @@ class Game {
     }
   }
 
-  drawTitle(s) {
-    fill(0, 140);
+  drawMenuScreen() {
+    this.drawTitle("FISHING DAY");
+    this.drawSub("시작하기를 눌러 설명을 확인하세요");
+    this.drawButton(this.menuButtonBounds(), "시작하기");
+    this.drawMenuCredit();
+  }
+
+  drawInfoScreen() {
+    this.drawDimOverlay(190);
+
+    const panel = this.infoPanelBounds();
+    push();
+    rectMode(CENTER);
+    noStroke();
+    fill(12, 46, 78, 235);
+    rect(panel.x, panel.y, panel.w, panel.h, 26);
+    pop();
+
+    const titleY = panel.y - panel.h / 2 + 32;
+    const textMarginX = 36;
+    const textMarginTop = 88;
+    const textMarginBottom = 110;
+    const scrollTrackWidth = 8;
+    const scrollGap = 12;
+    const textAreaW = panel.w - textMarginX * 2 - (scrollTrackWidth + scrollGap);
+    const textAreaH = panel.h - textMarginTop - textMarginBottom;
+    const textX = panel.x - panel.w / 2 + textMarginX;
+    const textY = panel.y - panel.h / 2 + textMarginTop;
+    const scrollTrackX = textX + textAreaW + scrollGap + scrollTrackWidth / 2;
+
+    fill(255);
+    textAlign(LEFT, TOP);
+    textStyle(BOLD);
+    textSize(30);
+    text("게임 설명", textX, titleY);
+
+    textStyle(NORMAL);
+    textSize(18);
+    const lineHeight = 26;
+    textLeading(lineHeight);
+    if (typeof textWrap === "function" && typeof WORD !== "undefined") textWrap(WORD);
+
+    const textTotalH = this.infoLines.length * lineHeight;
+    this.infoScrollMax = max(0, textTotalH - textAreaH);
+    this.infoScroll = constrain(this.infoScroll, 0, this.infoScrollMax);
+
+    push();
+    drawingContext.save();
+    drawingContext.beginPath();
+    drawingContext.rect(textX, textY, textAreaW, textAreaH);
+    drawingContext.clip();
+    text(this.infoLines.join("\n"), textX, textY - this.infoScroll, textAreaW);
+    drawingContext.restore();
+    pop();
+    textLeading(20);
+
+    if (this.infoScrollMax > 0) {
+      this.drawInfoScrollbar(scrollTrackX, textY, textAreaH, textTotalH);
+    }
+
+    this.drawButton(this.infoStartButtonBounds(), "시작하기");
+    this.drawCloseButton(this.infoCloseButtonBounds());
+  }
+
+  drawButton(bounds, label) {
+    const hover = this.isPointInRect(mouseX, mouseY, bounds);
+    push();
+    rectMode(CENTER);
+    stroke(hover ? color(255) : color(255, 220));
+    strokeWeight(2);
+    fill(hover ? color(255, 255, 255, 240) : color(255, 255, 255, 200));
+    rect(bounds.x, bounds.y, bounds.w, bounds.h, 18);
+
+    noStroke();
+    fill(24, 78, 120);
+    textAlign(CENTER, CENTER);
+    textSize(20);
+    text(label, bounds.x, bounds.y + 2);
+    pop();
+  }
+
+  drawCloseButton(bounds) {
+    const hover = this.isPointInRect(mouseX, mouseY, bounds);
+    push();
+    rectMode(CENTER);
+    stroke(hover ? color(255, 160, 160) : color(255, 220));
+    strokeWeight(2);
+    noFill();
+    rect(bounds.x, bounds.y, bounds.w, bounds.h, 8);
+
+    strokeWeight(3);
+    const dx = bounds.w * 0.3;
+    const dy = bounds.h * 0.3;
+    line(bounds.x - dx, bounds.y - dy, bounds.x + dx, bounds.y + dy);
+    line(bounds.x - dx, bounds.y + dy, bounds.x + dx, bounds.y - dy);
+    pop();
+  }
+
+  drawMenuCredit() {
+    fill(255, 220);
+    textAlign(RIGHT, BOTTOM);
+    textSize(16);
+    text(this.authorCredit, width - 24, height - 18);
+  }
+
+  drawInfoScrollbar(x, y, h, totalHeight) {
+    const trackW = 8;
+    push();
+    rectMode(CENTER);
+    noStroke();
+    fill(255, 80);
+    rect(x, y + h / 2, trackW, h, 6);
+
+    const visibleRatio = h / totalHeight;
+    const knobH = max(30, h * visibleRatio);
+    const available = h - knobH;
+    const progress = this.infoScrollMax === 0 ? 0 : this.infoScroll / this.infoScrollMax;
+    const knobCenterY = y + knobH / 2 + available * progress;
+
+    fill(255, 180);
+    rect(x, knobCenterY, trackW, knobH, 6);
+    pop();
+  }
+
+  drawDimOverlay(alpha = 140) {
+    noStroke();
+    fill(0, alpha);
     rect(0, 0, width, height);
+  }
+
+  menuButtonBounds() {
+    return {
+      x: width / 2,
+      y: height / 2 + 90,
+      w: 240,
+      h: 64
+    };
+  }
+
+  infoPanelBounds() {
+    return {
+      x: width / 2,
+      y: height / 2,
+      w: width * 0.68,
+      h: height * 0.62
+    };
+  }
+
+  infoStartButtonBounds() {
+    const panel = this.infoPanelBounds();
+    const buttonH = 58;
+    const bottomMargin = 40;
+    const centerY = panel.y + panel.h / 2 - bottomMargin - buttonH / 2;
+    return {
+      x: panel.x,
+      y: centerY,
+      w: 260,
+      h: buttonH
+    };
+  }
+
+  infoCloseButtonBounds() {
+    const panel = this.infoPanelBounds();
+    return {
+      x: panel.x + panel.w / 2 - 36,
+      y: panel.y - panel.h / 2 + 36,
+      w: 32,
+      h: 32
+    };
+  }
+
+  isPointInRect(px, py, bounds) {
+    const { x, y, w, h } = bounds;
+    return (
+      px >= x - w / 2 &&
+      px <= x + w / 2 &&
+      py >= y - h / 2 &&
+      py <= y + h / 2
+    );
+  }
+
+  drawTitle(s) {
+    this.drawDimOverlay(140);
     textAlign(CENTER, CENTER);
     fill(255);
     textSize(52);
