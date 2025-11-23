@@ -3,6 +3,49 @@
 let game;
 let bgm;
 
+const SEASON_DATA = {
+  SPRING: {
+    label: "봄",
+    fishes: [
+      { name: "벚꽃멸치", r: 12, speed: [1.5, 2.1], score: 5, color: [255, 127, 80] },
+      { name: "청연어", r: 16, speed: [1.2, 1.9], score: 10, color: [80, 180, 255] },
+      { name: "벚꽃돔", r: 20, speed: [1.0, 1.6], score: 15, color: [255, 195, 110] },
+      { name: "분홍농어", r: 22, speed: [0.9, 1.5], score: 18, color: [250, 160, 190] },
+      { name: "벚해삼", r: 26, speed: [0.8, 1.3], score: 25, color: [120, 210, 255] }
+    ]
+  },
+  SUMMER: {
+    label: "여름",
+    fishes: [
+      { name: "노랑망둥어", r: 12, speed: [1.6, 2.3], score: 6, color: [255, 205, 80] },
+      { name: "은갈치", r: 16, speed: [1.4, 2.0], score: 10, color: [220, 240, 255] },
+      { name: "파랑숭어", r: 20, speed: [1.2, 1.8], score: 15, color: [60, 140, 255] },
+      { name: "황금참돔", r: 22, speed: [1.0, 1.6], score: 18, color: [255, 210, 90] },
+      { name: "해태", r: 26, speed: [0.9, 1.4], score: 25, color: [80, 220, 200] }
+    ]
+  },
+  AUTUMN: {
+    label: "가을",
+    fishes: [
+      { name: "주홍전갱이", r: 12, speed: [1.4, 2.0], score: 6, color: [220, 120, 70] },
+      { name: "가을도미", r: 16, speed: [1.2, 1.9], score: 10, color: [255, 180, 90] },
+      { name: "단풍고등어", r: 20, speed: [1.0, 1.6], score: 15, color: [175, 75, 50] },
+      { name: "낙엽농어", r: 22, speed: [0.9, 1.4], score: 18, color: [200, 150, 110] },
+      { name: "붉은장어", r: 26, speed: [0.8, 1.3], score: 25, color: [120, 70, 50] }
+    ]
+  },
+  WINTER: {
+    label: "겨울",
+    fishes: [
+      { name: "빙어", r: 12, speed: [1.3, 1.9], score: 6, color: [210, 220, 255] },
+      { name: "눈송장어", r: 16, speed: [1.1, 1.8], score: 10, color: [180, 200, 240] },
+      { name: "얼음방어", r: 20, speed: [0.9, 1.5], score: 15, color: [120, 170, 255] },
+      { name: "설돔", r: 22, speed: [0.8, 1.3], score: 18, color: [235, 240, 250] },
+      { name: "혹한가자미", r: 26, speed: [0.7, 1.2], score: 25, color: [100, 200, 210] }
+    ]
+  }
+};
+
 function preload() {
   console.log("preload 시작");
   bgm = loadSound("Resources/Out of Flux - CHONKLAP.mp3", 
@@ -48,6 +91,7 @@ function keyPressed() {
 
 function mousePressed() {
   if (game.state === "MENU") {
+    if (game.handleSeasonTabClick(mouseX, mouseY)) return;
     const btn = game.menuButtonBounds();
     if (game.isPointInRect(mouseX, mouseY, btn)) game.showInfo();
   } else if (game.state === "INFO") {
@@ -83,18 +127,21 @@ function mouseWheel(event) {
 class Game {
   constructor() {
     this.state = "MENU";      // MENU | INFO | PLAY | RESULT
+    this.season = "SPRING";
     this.duration = 90;
     this.startMillis = 0;
 
     this.score = 0;
     this.best = 0;
     this.caught = 0;
+    this.fishScoreMap = {};
 
     this.boat = new Boat(width * 0.5, 90);
     this.hook = new Hook(this.boat);
 
     this.school = [];
     this.spawnFishes(12);
+    this.particles = [];
 
     this.infoLines = [
       "[게임 목표]",
@@ -141,9 +188,20 @@ class Game {
     this.spaceSpamStreak = 0;
   }
 
+  setSeason(season) {
+    if (!SEASON_DATA[season] || this.season === season) return;
+    this.season = season;
+    if (this.state !== "PLAY") {
+      this.school = [];
+      this.spawnFishes(12);
+    }
+  }
+
   start() {
     this.state = "PLAY";
     this.startMillis = millis();
+    this.fishScoreMap = {};
+    this.particles = [];
 
     if (bgm && typeof bgm.isPlaying === "function" && typeof bgm.loop === "function") {
       if (!bgm.isPlaying()) {
@@ -172,10 +230,11 @@ class Game {
     this.hook.reset(true);
     this.school = [];
     this.spawnFishes(12);
+    this.particles = [];
   }
 
   spawnFishes(n) {
-    for (let i = 0; i < n; i++) this.school.push(Fish.random());
+    for (let i = 0; i < n; i++) this.school.push(Fish.randomBySeason(this.season));
   }
 
   timeLeft() {
@@ -195,6 +254,7 @@ class Game {
         }
       }
     }
+    this.updateParticles();
     if (this.state !== "PLAY") return;
 
     this.boat.update();
@@ -219,8 +279,10 @@ class Game {
       f.caught = true;
       this.score += f.score;
       this.caught += 1;
+      const label = f.name || "FISH";
+      this.fishScoreMap[label] = (this.fishScoreMap[label] || 0) + f.score;
       this.school = this.school.filter(x => x !== f);
-      this.school.push(Fish.random());
+      this.school.push(Fish.randomBySeason(this.season));
       this.hook.reset(false);
     }
 
@@ -260,6 +322,7 @@ class Game {
 
   render() {
     this.drawBackground();
+    this.drawParticles();
 
     if (this.state === "MENU") {
       this.drawMenuScreen();
@@ -287,22 +350,32 @@ class Game {
   }
 
   drawBackground() {
-    // 물 배경
+    const bgPreset = {
+      SPRING: { top: color(205, 235, 255), bottom: color(80, 160, 210) },
+      SUMMER: { top: color(80, 200, 255), bottom: color(0, 100, 180) },
+      AUTUMN: { top: color(170, 210, 240), bottom: color(30, 90, 140) },
+      WINTER: { top: color(200, 220, 245), bottom: color(60, 90, 150) }
+    }[this.season] || { top: color(120, 200, 255), bottom: color(10, 140, 210) };
+
     noStroke();
     for (let y = 0; y < height; y++) {
-      const c = lerpColor(color(120, 200, 255), color(10, 140, 210), y / height);
+      const c = lerpColor(bgPreset.top, bgPreset.bottom, y / height);
       stroke(c);
       line(0, y, width, y);
     }
 
-    // 수면
-    stroke(255, 255, 255, 60);
-    strokeWeight(3);
+    stroke(255, 255, 255, 70);
+    strokeWeight(2.5);
     const surfaceY = this.boat.y + 20;
     for (let x = 0; x < width; x += 16) {
-      const y = surfaceY + sin((frameCount * 0.05 + x) * 0.05) * 3;
+      const y = surfaceY + sin((frameCount * 0.05 + x * 0.05)) * 3;
       line(x, y, x + 12, y);
     }
+
+    if (this.season === "SUMMER") this.drawSeaweed();
+    else if (this.season === "SPRING") this.drawSpringAnemones();
+    else if (this.season === "AUTUMN") this.drawAutumnRocks();
+    else if (this.season === "WINTER") this.drawWinterIceFloes();
   }
 
   drawUI() {
@@ -355,6 +428,10 @@ class Game {
       textSize(14);
       text("마커가 중앙을 지날 때 SPACE!", gx, gy + gh + 6);
     }
+
+    if (this.state === "PLAY") {
+      this.drawFishScorePanel();
+    }
   }
 
   drawMenuScreen() {
@@ -362,6 +439,7 @@ class Game {
     this.drawSub("시작하기를 눌러 설명을 확인하세요");
     this.drawButton(this.menuButtonBounds(), "시작하기");
     this.drawMenuCredit();
+    this.drawSeasonTabs();
   }
 
   drawInfoScreen() {
@@ -462,6 +540,172 @@ class Game {
     text(this.authorCredit, width - 24, height - 18);
   }
 
+  drawFishScorePanel() {
+    const fishes = this.getSeasonFishList();
+    if (!fishes.length) return;
+    const boxW = 210;
+    const rowH = 22;
+    const boxH = 28 + fishes.length * rowH;
+    const boxX = width - boxW - 18;
+    const boxY = 44;
+
+    push();
+    rectMode(CORNER);
+    noStroke();
+    fill(70, 110, 160, 210);
+    rect(boxX, boxY, boxW, boxH, 14);
+
+    fill(255);
+    textAlign(CENTER, CENTER);
+    textSize(15);
+    text("🐟 FISH SCORES", boxX + boxW / 2, boxY + 14);
+
+    let rowY = boxY + 34;
+    textSize(13);
+    for (const cfg of fishes) {
+      const earned = this.fishScoreMap[cfg.name] || 0;
+
+      textAlign(LEFT, CENTER);
+      fill(250);
+      text(cfg.name, boxX + 14, rowY);
+
+      textAlign(RIGHT, CENTER);
+      fill(255, 245, 130);
+      text(`+${earned}`, boxX + boxW - 14, rowY);
+
+      rowY += rowH;
+    }
+    pop();
+  }
+
+  drawSeasonTabs() {
+    const tabs = this.seasonTabRects();
+    if (!tabs.length) return;
+    textSize(18);
+    textAlign(CENTER, CENTER);
+    for (const tab of tabs) {
+      const { bounds, season } = tab;
+      const info = SEASON_DATA[season];
+      const active = this.season === season;
+      const hover = this.isPointInRect(mouseX, mouseY, bounds);
+      const strokeCol = active ? color(255) : color(255, 255, 255, 180);
+      const baseAlpha = active ? 240 : 170;
+      const fillAlpha = hover ? baseAlpha : baseAlpha - 40;
+
+      push();
+      rectMode(CENTER);
+      stroke(strokeCol);
+      strokeWeight(active ? 2.5 : 1.5);
+      fill(255, 255, 255, constrain(fillAlpha, 80, 255));
+      rect(bounds.x, bounds.y, bounds.w, bounds.h, 14);
+
+      noStroke();
+      fill(active ? color(20, 70, 110) : color(20, 70, 110, 220));
+      text(info.label, bounds.x, bounds.y);
+      pop();
+    }
+  }
+
+  drawSeaweed() {
+    const baseY = height - 70;
+    const count = 6;
+    for (let i = 0; i < count; i++) {
+      const x = 90 + i * 140;
+      const sway = sin(frameCount * 0.02 + i) * 12;
+      const hue = color(40, 150 + i * 8, 100 + i * 6, 180);
+      push();
+      noStroke();
+      fill(hue);
+      beginShape();
+      vertex(x - 12, baseY);
+      bezierVertex(
+        x - 24 + sway * 0.4,
+        baseY - 40,
+        x - 18 - sway * 0.4,
+        baseY - 90,
+        x - 6,
+        baseY - 130
+      );
+      bezierVertex(
+        x + sway * 0.6,
+        baseY - 110,
+        x + 6 - sway * 0.6,
+        baseY - 50,
+        x + 10,
+        baseY
+      );
+      endShape(CLOSE);
+      pop();
+    }
+  }
+
+  drawSpringAnemones() {
+    const baseY = height - 60;
+    const spots = [80, 210, 360, 510, 660, 790];
+    for (const x of spots) {
+      push();
+      translate(x, baseY);
+      const pulse = sin(frameCount * 0.05 + x * 0.01) * 4;
+      noStroke();
+      fill(255, 190, 210, 210);
+      ellipse(0, pulse, 28, 60);
+      fill(255, 160, 200, 220);
+      ellipse(-12, pulse + 6, 18, 42);
+      ellipse(12, pulse + 4, 18, 42);
+      fill(255, 230, 120, 220);
+      circle(0, pulse - 4, 14);
+      pop();
+    }
+  }
+
+  drawAutumnRocks() {
+    const baseY = height - 55;
+    const rocks = [
+      { x: 140, w: 130, h: 38 },
+      { x: 340, w: 110, h: 30 },
+      { x: 560, w: 160, h: 44 },
+      { x: 760, w: 120, h: 36 }
+    ];
+    for (const r of rocks) {
+      push();
+      translate(r.x, baseY);
+      noStroke();
+      fill(90, 70, 60, 220);
+      ellipse(0, 0, r.w, r.h);
+      fill(120, 95, 80, 180);
+      ellipse(-r.w * 0.15, -6, r.w * 0.6, r.h * 0.5);
+      pop();
+    }
+  }
+
+  drawWinterIceFloes() {
+    const surfaceY = this.boat.y + 26;
+    const floes = [
+      { x: 140, w: 140 },
+      { x: 330, w: 120 },
+      { x: 520, w: 150 },
+      { x: 720, w: 130 }
+    ];
+    for (const f of floes) {
+      const wobble = sin(frameCount * 0.03 + f.x * 0.02) * 2;
+      push();
+      translate(f.x, surfaceY + wobble);
+      noStroke();
+      fill(235, 245, 255, 180);
+      beginShape();
+      vertex(-f.w / 2, 0);
+      vertex(-f.w / 2 + 20, -12);
+      vertex(f.w / 2 - 18, -10);
+      vertex(f.w / 2, 0);
+      vertex(f.w / 2 - 24, 10);
+      vertex(-f.w / 2 + 16, 8);
+      endShape(CLOSE);
+      fill(200, 220, 255, 120);
+      quad(-f.w / 2 + 10, -4, -f.w / 2 + 35, -14, -f.w / 2 + 75, -12, -f.w / 2 + 40, -2);
+      pop();
+    }
+  }
+
   drawInfoScrollbar(x, y, h, totalHeight) {
     const trackW = 8;
     push();
@@ -481,6 +725,53 @@ class Game {
     pop();
   }
 
+  seasonTabRects() {
+    const keys = Object.keys(SEASON_DATA);
+    if (!keys.length) return [];
+    const tabW = 130;
+    const tabH = 46;
+    const gap = 16;
+    const totalW = keys.length * tabW + (keys.length - 1) * gap;
+    const startX = width / 2 - totalW / 2;
+    const topY = height / 2 + 160;
+    const rects = [];
+    for (let i = 0; i < keys.length; i++) {
+      const season = keys[i];
+      const cx = startX + i * (tabW + gap) + tabW / 2;
+      const cy = topY + tabH / 2;
+      rects.push({
+        season,
+        bounds: { x: cx, y: cy, w: tabW, h: tabH }
+      });
+    }
+    return rects;
+  }
+
+  getSeasonFishList() {
+    const info = SEASON_DATA[this.season];
+    return info ? info.fishes : [];
+  }
+
+  updateParticles() {
+    const type = {
+      SPRING: "petal",
+      SUMMER: "rain",
+      AUTUMN: "leaf",
+      WINTER: "snow"
+    }[this.season];
+
+    if (type && frameCount % 6 === 0) {
+      this.particles.push(new Particle(type));
+    }
+
+    for (const p of this.particles) p.update();
+    this.particles = this.particles.filter(p => !p.offscreen());
+  }
+
+  drawParticles() {
+    for (const p of this.particles) p.draw();
+  }
+
   drawDimOverlay(alpha = 140) {
     noStroke();
     fill(0, alpha);
@@ -491,8 +782,8 @@ class Game {
     return {
       x: width / 2,
       y: height / 2 + 90,
-      w: 240,
-      h: 64
+      w: 200,
+      h: 56
     };
   }
 
@@ -507,13 +798,13 @@ class Game {
 
   infoStartButtonBounds() {
     const panel = this.infoPanelBounds();
-    const buttonH = 58;
+    const buttonH = 52;
     const bottomMargin = 40;
     const centerY = panel.y + panel.h / 2 - bottomMargin - buttonH / 2;
     return {
       x: panel.x,
       y: centerY,
-      w: 260,
+      w: 220,
       h: buttonH
     };
   }
@@ -536,6 +827,17 @@ class Game {
       py >= y - h / 2 &&
       py <= y + h / 2
     );
+  }
+
+  handleSeasonTabClick(px, py) {
+    const tabs = this.seasonTabRects();
+    for (const tab of tabs) {
+      if (this.isPointInRect(px, py, tab.bounds)) {
+        this.setSeason(tab.season);
+        return true;
+      }
+    }
+    return false;
   }
 
   drawTitle(s) {
@@ -770,7 +1072,7 @@ class Hook {
 
 /* ---------------- Fish ---------------- */
 class Fish {
-  constructor(x, y, r, speed, strength, score, hue) {
+  constructor(x, y, r, speed, strength, score, hue, name = "FISH") {
     this.x = x;
     this.y = y;
     this.r = r;
@@ -781,48 +1083,30 @@ class Fish {
     this.score = score;
     this.caught = false;
     this.hue = hue;
+    this.name = name;
     this.noiseSeed = random(1000);
     this.flip = this.vx < 0 ? -1 : 1;
   }
 
   static random() {
-    const y = random(180, height - 90);
-    const type = random();
+    return Fish.randomBySeason("SPRING");
+  }
 
-    if (type < 0.6) {
-      // 작은 물고기
-      return new Fish(
-        random(40, width - 40),
-        y,
-        12,
-        random(1.6, 2.2),
-        2.5,
-        5,
-        color(255, 180, 80)
-      );
-    } else if (type < 0.9) {
-      // 중간 물고기
-      return new Fish(
-        random(40, width - 40),
-        y,
-        18,
-        random(1.2, 1.8),
-        4,
-        12,
-        color(120, 220, 180)
-      );
-    } else {
-      // 큰 물고기
-      return new Fish(
-        random(40, width - 40),
-        y,
-        26,
-        random(0.9, 1.4),
-        5.5,
-        25,
-        color(110, 140, 255)
-      );
-    }
+  static randomBySeason(season) {
+    const seasonInfo = SEASON_DATA[season] || SEASON_DATA.SPRING;
+    const def = random(seasonInfo.fishes);
+    const speedRange = def.speed || [1.2, 1.8];
+    const speed = random(speedRange[0], speedRange[1]);
+    return new Fish(
+      random(40, width - 40),
+      random(180, height - 90),
+      def.r,
+      speed,
+      4,
+      def.score,
+      color(...def.color),
+      def.name
+    );
   }
 
   update() {
@@ -859,6 +1143,43 @@ class Fish {
       ellipse(0, 0, this.r * 2.5, this.r * 1.5);
     }
 
+    pop();
+  }
+}
+
+class Particle {
+  constructor(type) {
+    this.type = type;
+    this.x = random(width);
+    this.y = random(-40, 0);
+    this.vy = random(1.2, 3.2);
+    this.vx = (type === "leaf" || type === "petal") ? random(-0.4, 0.4) : 0;
+    this.size = random(6, 14);
+    this.rot = random(TWO_PI);
+    this.spin = random(-0.02, 0.02);
+  }
+
+  update() {
+    this.x += this.vx;
+    this.y += this.vy;
+    this.rot += this.spin;
+  }
+
+  offscreen() {
+    return this.y > height + 40;
+  }
+
+  draw() {
+    push();
+    translate(this.x, this.y);
+    rotate(this.rot);
+    noStroke();
+    if (this.type === "snow") fill(255, 240);
+    else if (this.type === "petal") fill(255, 180, 200);
+    else if (this.type === "leaf") fill(255, 190, 90);
+    else if (this.type === "rain") fill(150, 220, 255, 180);
+    else fill(255, 200);
+    ellipse(0, 0, this.size, this.size * 0.6);
     pop();
   }
 }
