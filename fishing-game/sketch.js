@@ -7,44 +7,45 @@ const SEASON_DATA = {
   SPRING: {
     label: "봄",
     fishes: [
-      { name: "벚꽃멸치", r: 12, speed: [1.5, 2.1], score: 5, color: [255, 127, 80] },
-      { name: "청연어", r: 16, speed: [1.2, 1.9], score: 10, color: [80, 180, 255] },
-      { name: "벚꽃돔", r: 20, speed: [1.0, 1.6], score: 15, color: [255, 195, 110] },
-      { name: "분홍농어", r: 22, speed: [0.9, 1.5], score: 18, color: [250, 160, 190] },
-      { name: "벚해삼", r: 26, speed: [0.8, 1.3], score: 25, color: [120, 210, 255] }
+      { name: "참돔", r: 12, speed: [1.5, 2.1], score: 5, color: [255, 127, 80], desc: "선명한 분홍빛 몸체에 박힌 영롱한 파란 반점이 특징이며, 수심 깊은 암초 지대에 서식하는 '바다의 여왕'입니다.", img: "참돔.jpg" },
+      { name: "농어", r: 16, speed: [1.2, 1.9], score: 10, color: [80, 180, 255], desc: "아래턱이 위턱보다 튀어나온 큰 입을 가졌으며, 낚싯바늘에 걸리면 수면 위로 튀어 올라 머리를 흔드는 '바늘털이'가 주특기입니다.", img: "농어.jpg" },
+      { name: "숭어", r: 20, speed: [1.0, 1.6], score: 15, color: [255, 195, 110], desc: "둥글고 납작한 머리와 큰 비늘을 가졌으며, 떼를 지어 다니며 수면 위로 높이 점프하는 습성이 있습니다.", img: "숭어.jpg" },
+      { name: "조기", r: 22, speed: [0.9, 1.5], score: 18, color: [250, 160, 190], desc: "배 부분이 선명한 황금빛을 띠며, 위협을 느끼거나 산란기가 되면 부레를 수축시켜 '북, 북' 우는 소리를 냅니다.", img: "조기.jpg" },
+      { name: "임연수어", r: 26, speed: [0.8, 1.3], score: 25, color: [120, 210, 255], desc: "몸 옆면에 굵고 선명한 검은색 세로 줄무늬가 있으며, 깊은 바다의 바위 틈이나 모래 바닥에 무리 지어 서식합니다.", img: "임연수어.jpg" }
     ]
   },
   SUMMER: {
     label: "여름",
     fishes: [
-      { name: "노랑망둥어", r: 12, speed: [1.6, 2.3], score: 6, color: [255, 205, 80] },
-      { name: "은갈치", r: 16, speed: [1.4, 2.0], score: 10, color: [220, 240, 255] },
-      { name: "파랑숭어", r: 20, speed: [1.2, 1.8], score: 15, color: [60, 140, 255] },
-      { name: "황금참돔", r: 22, speed: [1.0, 1.6], score: 18, color: [255, 210, 90] },
-      { name: "해태", r: 26, speed: [0.9, 1.4], score: 25, color: [80, 220, 200] }
+      { name: "민어", r: 12, speed: [1.6, 2.3], score: 6, color: [255, 205, 80], desc: "짝짓기 철이 되면 부레를 수축·이완시켜 마치 개구리처럼 '구욱, 구욱' 하는 크고 독특한 울음소리를 냅니다.", img: "민어.jpg" },
+      { name: "병어", r: 16, speed: [1.4, 2.0], score: 10, color: [220, 240, 255], desc: "납작한 마름모꼴의 은백색 몸체가 특징이며, 입이 매우 작아 미끼를 따먹는 솜씨가 좋아 낚기 까다로운 편입니다.", img: "병어.jpg" },
+      { name: "광어", r: 20, speed: [1.2, 1.8], score: 15, color: [60, 140, 255], desc: "두 눈이 몸의 왼쪽에 쏠려 있으며, 바닥의 모래 색과 비슷하게 몸 색깔을 바꾸는 위장술(보호색)의 귀재입니다.", img: "광어.jpg" },
+      { name: "갈치", r: 22, speed: [1.0, 1.6], score: 18, color: [255, 210, 90], desc: "칼처럼 기다란 은빛 몸체와 날카로운 이빨을 가졌으며, 물속에서 머리를 위로 하고 꼿꼿이 서서 헤엄치는 독특한 습성이 있습니다.", img: "갈치.jpg" },
+      { name: "고등어", r: 26, speed: [0.9, 1.4], score: 25, color: [80, 220, 200], desc: "등 쪽에 푸른색 물결무늬가 선명하며, 성격이 매우 급해 낚싯바늘에 걸리면 격렬하게 파닥거리다 금방 죽어버리곤 합니다.", img: "고등어.jpg" }
     ]
   },
   AUTUMN: {
     label: "가을",
     fishes: [
-      { name: "주홍전갱이", r: 12, speed: [1.4, 2.0], score: 6, color: [220, 120, 70] },
-      { name: "가을도미", r: 16, speed: [1.2, 1.9], score: 10, color: [255, 180, 90] },
-      { name: "단풍고등어", r: 20, speed: [1.0, 1.6], score: 15, color: [175, 75, 50] },
-      { name: "낙엽농어", r: 22, speed: [0.9, 1.4], score: 18, color: [200, 150, 110] },
-      { name: "붉은장어", r: 26, speed: [0.8, 1.3], score: 25, color: [120, 70, 50] }
+      { name: "전어", r: 12, speed: [1.4, 2.0], score: 6, color: [220, 120, 70], desc: "아가미 뒤쪽에 커다란 검은 반점이 하나 박혀 있으며, 가을이 되면 떼를 지어 연안으로 몰려오는 습성이 있습니다.", img: "전어.jpg" },
+      { name: "꽁치", r: 16, speed: [1.2, 1.9], score: 10, color: [255, 180, 90], desc: "아래턱이 위턱보다 튀어나온 뾰족한 입을 가졌으며, 빛을 좋아해 밤에 불을 밝히면 수면 위로 떼 지어 몰려듭니다.", img: "꽁치.jpg" },
+      { name: "삼치", r: 20, speed: [1.0, 1.6], score: 15, color: [175, 75, 50], desc: "부레가 없어 가라앉지 않기 위해 쉴 새 없이 헤엄쳐야 하며, 날카로운 송곳니와 빠른 속도를 자랑하는 바다의 사냥꾼입니다.", img: "삼치.jpg" },
+      { name: "연어", r: 22, speed: [0.9, 1.4], score: 18, color: [200, 150, 110], desc: "강에서 태어나 바다로 갔다가, 산란기가 되면 물살을 거슬러 고향인 강으로 다시 돌아오는 강한 귀소 본능을 가졌습니다.", img: "연어.jpg" },
+      { name: "감성돔", r: 26, speed: [0.8, 1.3], score: 25, color: [120, 70, 50], desc: "은빛 비늘에 검은 광택이 감돌아 '바다의 왕자'라 불리며, 경계심이 매우 강하고 한 번 걸리면 바닥으로 처박는 강력한 손맛을 자랑합니다.", img: "감성돔.jpg" }
     ]
   },
   WINTER: {
     label: "겨울",
     fishes: [
-      { name: "빙어", r: 12, speed: [1.3, 1.9], score: 6, color: [210, 220, 255] },
-      { name: "눈송장어", r: 16, speed: [1.1, 1.8], score: 10, color: [180, 200, 240] },
-      { name: "얼음방어", r: 20, speed: [0.9, 1.5], score: 15, color: [120, 170, 255] },
-      { name: "설돔", r: 22, speed: [0.8, 1.3], score: 18, color: [235, 240, 250] },
-      { name: "혹한가자미", r: 26, speed: [0.7, 1.2], score: 25, color: [100, 200, 210] }
+      { name: "방어", r: 12, speed: [1.3, 1.9], score: 6, color: [210, 220, 255], desc: "몸통이 마치 어뢰처럼 매끈하고 통통하며, 겨울이 되면 덩치가 커지고 힘이 엄청 세져서 '부시리'와 함께 최고의 손맛을 보여줍니다.", img: "방어.jpg" },
+      { name: "대구", r: 16, speed: [1.1, 1.8], score: 10, color: [180, 200, 240], desc: "입이 아주 커서 '대구(大口)'라고 불리는데, 아래턱에 난 긴 수염 하나로 어두운 심해 바닥을 훑으며 먹이를 찾는 탐지기 역할을 합니다.", img: "대구.jpg" },
+      { name: "아귀", r: 20, speed: [0.9, 1.5], score: 15, color: [120, 170, 255], desc: "머리가 몸의 대부분을 차지할 만큼 크고 못생겼지만, 머리 꼭대기에 달린 낚싯대 같은 돌기(유인기)를 흔들어 먹잇감을 유인하는 타고난 낚시꾼입니다.", img: "아귀.jpg" },
+      { name: "청어", r: 22, speed: [0.8, 1.3], score: 18, color: [235, 240, 250], desc: "등은 짙은 푸른색에 배는 은빛이라 바다 색과 비슷하며, 겨울철 차가운 바다에서 수천 마리가 떼를 지어 다니는 장관을 연출합니다.", img: "청어.jpg" },
+      { name: "도루묵", r: 26, speed: [0.7, 1.2], score: 25, color: [100, 200, 210], desc: "비늘이 거의 없어 몸이 매우 미끄러운데, 겨울 산란기가 되면 배가 터질 듯이 알을 가득 품고 얕은 바다의 해초 숲으로 모여듭니다.", img: "도루묵.jpg" }
     ]
   }
 };
+
 
 function preload() {
   console.log("preload 시작");
@@ -126,7 +127,17 @@ function mousePressed() {
       game.closeInfo();
     }
   } else if (game.state === "RESULT") {
-    game.reset();
+    if (game.pokedexOpen) {
+      const closeBounds = game.getPokedexCloseBounds();
+      if (game.isPointInRect(mouseX, mouseY, closeBounds)) {
+        game.pokedexOpen = false; // 도감 닫기
+        return;
+      }
+    }
+    // 도감이 닫혀있거나 다른 곳 누르면 재시작
+    game.reset(); 
+  } else if (game.state === "PLAY") {
+    if (!game.hook.fish) game.hook.toggleDrop();
   }
 }
 
@@ -155,6 +166,9 @@ class Game {
     this.best = 0;
     this.caught = 0;
     this.fishScoreMap = {};
+    
+    //도감 팝업 열림 상태
+    this.pokedexOpen = false; 
 
     this.boat = new Boat(width * 0.5, 90);
     this.hook = new Hook(this.boat);
@@ -275,6 +289,8 @@ class Game {
       this.state = "RESULT";
       this.best = max(this.best, this.score);
       this.hook.reset(true);
+      this.pokedexOpen = true; // [추가됨] 결과 화면 진입 시 도감 열기
+      
       if (bgm && typeof bgm.stop === "function" && typeof bgm.isPlaying === "function") {
         if (bgm.isPlaying()) {
           bgm.stop();
@@ -376,8 +392,14 @@ class Game {
     this.drawUI();
 
     if (this.state === "RESULT") {
+      
       this.drawTitle("TIME UP!");
       this.drawSub(`SCORE ${this.score}  |  BEST ${this.best}  |  ENTER 재시작`);
+      
+      
+      if (this.pokedexOpen) {
+        this.drawResultPokedex(); 
+      }
     }
   }
 
@@ -995,6 +1017,119 @@ class Game {
       }
     }
   }
+
+  //도감 닫기 버튼
+  getPokedexCloseBounds() {
+    const boxW = 600;
+    const boxH = 400;
+    const boxX = width / 2;
+    const boxY = height / 2;
+    
+    return {
+      x: boxX + boxW/2 - 25,
+      y: boxY - boxH/2 + 25,
+      w: 30,
+      h: 30
+    };
+  }
+
+  //도감
+  drawResultPokedex() {
+    const boxW = 700;
+    const boxH = 560;
+    const boxX = width / 2;
+    const boxY = height / 2;
+    
+    push();
+    rectMode(CENTER);
+    
+    // 도감 배경 박스
+    stroke(200);
+    strokeWeight(2);
+    fill(245, 245, 250, 250); 
+    rect(boxX, boxY, boxW, boxH, 16);
+    
+    // 제목
+    noStroke();
+    fill(40);
+    textAlign(CENTER, TOP);
+    textSize(24);
+    textStyle(BOLD);
+    text(`[ ${SEASON_DATA[this.season].label} 도감 ]`, boxX, boxY - boxH/2 + 25);
+    
+    // 물고기 리스트
+    const fishes = this.getSeasonFishList();
+    const startY = boxY - boxH/2 + 75;
+    const gapY = 90; 
+    const textAreaWidth = boxW - 130;
+   
+    textAlign(LEFT, TOP); 
+    textWrap(WORD);
+    textStyle(NORMAL);
+
+    for (let i = 0; i < fishes.length; i++) {
+      const data = fishes[i];
+      const earnedScore = this.fishScoreMap[data.name] || 0;
+      const count = Math.floor(earnedScore / data.score);
+      const isCaught = count > 0; 
+
+      const itemY = startY + i * gapY;
+      const descX = boxX; // 중앙 기준
+      const descY = itemY + 28;
+
+      if (isCaught) {
+        // 잡음
+        fill(0); 
+        textSize(18);
+        textStyle(BOLD);
+        textAlign(CENTER, TOP);
+        text(`${data.name} (x${count})`, boxX, itemY);
+
+        // 설명
+        textSize(13);
+        textStyle(NORMAL);
+        fill(60);
+        textWrap(WORD);
+        textLeading(18);
+        textAlign(CENTER, TOP);
+        text(data.desc, descX, descY, textAreaWidth);
+
+      } else {
+        // 못 잡은 경우
+        fill(180); 
+        textSize(18);
+        textStyle(BOLD);
+        textAlign(CENTER, TOP);
+        text(data.name, boxX, itemY);
+
+        fill(180);
+        textSize(13);
+        textStyle(NORMAL);
+        textWrap(WORD);
+        textLeading(18);
+        textAlign(CENTER, TOP);
+        text("도감에 들어올 수 있도록 획득해주세요.", descX, descY, textAreaWidth);
+      }
+    }
+
+    // 닫기 버튼
+    const closeBtn = this.getPokedexCloseBounds();
+    const hover = this.isPointInRect(mouseX, mouseY, closeBtn);
+    
+    push(); 
+    rectMode(CENTER); 
+    noStroke();
+    fill(hover ? color(255, 100, 100) : color(200));
+    ellipse(closeBtn.x, closeBtn.y, closeBtn.w, closeBtn.w);
+
+    stroke(255);
+    strokeWeight(3);
+    const r = closeBtn.w * 0.25;
+    line(closeBtn.x - r, closeBtn.y - r, closeBtn.x + r, closeBtn.y + r);
+    line(closeBtn.x + r, closeBtn.y - r, closeBtn.x - r, closeBtn.y + r);
+    pop();
+    pop();
+    }
 }
 
 /* ---------------- Boat ---------------- */
