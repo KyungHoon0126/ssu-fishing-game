@@ -87,6 +87,28 @@ function keyPressed() {
   if (game.state === "PLAY" && key === " ") {
     game.handleGaugeHit();
   }
+
+  if (game.state === "PLAY") {
+    const isHooked = game.hook && game.hook.fish && game.hook.mode === "HOOKED";
+    
+    if (!isHooked) {
+      if (keyCode === LEFT_ARROW) {
+        game.boat.moveLeft();
+      } else if (keyCode === RIGHT_ARROW) {
+        game.boat.moveRight();
+      }
+    }
+
+    if (keyCode === DOWN_ARROW) {
+      if (!game.hook.fish) game.hook.toggleDrop();
+    }
+  }
+}
+
+function keyReleased() {
+  if (keyCode === LEFT_ARROW || keyCode === RIGHT_ARROW) {
+    if (game && game.boat) game.boat.stop();
+  }
 }
 
 function mousePressed() {
@@ -105,8 +127,6 @@ function mousePressed() {
     }
   } else if (game.state === "RESULT") {
     game.reset();
-  } else if (game.state === "PLAY") {
-    if (!game.hook.fish) game.hook.toggleDrop();
   }
 }
 
@@ -148,8 +168,8 @@ class Game {
       "- 90초 안에 더 많은 물고기를 낚아 높은 점수를 노리세요.",
       "",
       "[조작법]",
-      "- 마우스 이동: 배 위치 조절",
-      "- 마우스 클릭: 낚싯바늘 올리기/내리기",
+      "- ← / → 키: 배 좌우 이동",
+      "- ↓ 키: 낚싯바늘 올리기/내리기",
       "- SPACE: 게이지 타이밍 성공 시 당기기",
       "- ENTER: 선택/시작, X: 설명 닫기",
       "",
@@ -923,14 +943,30 @@ class Boat {
   constructor(x, y) {
     this.x = x;
     this.y = y;
+
+    this.speed = 5;
+    this.dir = 0;
   }
 
   update() {
-    this.x = constrain(mouseX, 80, width - 80);
+    this.x += this.dir * this.speed;
+    this.x = constrain(this.x, 80, width - 80);
   }
 
   hookY() {
     return this.y + 26;
+  }
+
+  moveLeft() {
+    this.dir = -1;
+  }
+
+  moveRight() {
+    this.dir = 1;
+  }
+
+  stop() {
+    this.dir = 0;
   }
 
   draw() {
