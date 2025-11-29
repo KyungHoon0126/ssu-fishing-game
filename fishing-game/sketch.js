@@ -206,6 +206,9 @@ class Game {
     // 스페이스 연타 체크
     this.lastSpaceTime = 0;
     this.spaceSpamStreak = 0;
+
+    this.gaugeEffect = "";
+    this.gaugeEffectTime = 0;
   }
 
   setSeason(season) {
@@ -447,6 +450,37 @@ class Game {
       textAlign(CENTER, TOP);
       textSize(14);
       text("마커가 중앙을 지날 때 SPACE!", gx, gy + gh + 6);
+    }
+
+    if (this.gaugeEffect && millis() - this.gaugeEffectTime < 400) {
+      const elapsed = millis() - this.gaugeEffectTime;
+      const dur = 400;
+      const tFade = constrain(elapsed / dur, 0, 1);
+      const alpha = 255 * (1 - tFade);
+      const floatOffset = -4 - 6 * tFade;
+
+      textAlign(LEFT, CENTER);
+      textSize(18);
+
+      let label = "";
+      if (this.gaugeEffect === "PERFECT") {
+        fill(255, 255, 120, alpha);
+        label = "PERFECT!";
+      } else if (this.gaugeEffect === "HIT") {
+        fill(120, 255, 120, alpha);
+        label = "HIT!";
+      } else if (this.gaugeEffect === "MISS") {
+        fill(255, 120, 120, alpha);
+        label = "MISS!";
+      }
+
+      const ex = width / 2 + 90;   // SCORE 기준 오른쪽 옆
+      const ey = 20 + floatOffset; // SCORE와 비슷한 높이에서 살짝 위로 떠오르는 느낌
+      if (label) {
+        text(label, ex, ey);
+      }
+    } else {
+      this.gaugeEffect = "";
     }
 
     if (this.state === "PLAY") {
@@ -904,6 +938,9 @@ class Game {
       if (random() < escapeChance) {
         this.hook.forceFullMiss();
         this.spaceSpamStreak = 0;
+
+        this.gaugeEffect = "MISS";
+        this.gaugeEffectTime = millis();
         return;
       }
     }
@@ -925,11 +962,18 @@ class Game {
 
       if (distCenter <= perfectThreshold) {
         mul = 1.4;
+        this.gaugeEffect = "PERFECT";
+      } else {
+        this.gaugeEffect = "HIT";
       }
 
+      this.gaugeEffectTime = millis();
       this.hook.pullStep(mul);
       this.gaugeLastHit = millis();
     } else {
+      this.gaugeEffect = "MISS";
+      this.gaugeEffectTime = millis();
+
       const generalEscapeChance = 0.15;
       if (random() < generalEscapeChance) {
         this.hook.forceEscape();
