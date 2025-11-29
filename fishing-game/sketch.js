@@ -209,6 +209,10 @@ class Game {
 
     this.gaugeEffect = "";
     this.gaugeEffectTime = 0;
+
+    // 훅 재후킹 쿨타임 관리
+    this.lastHookEscapeTime = 0;   // 마지막으로 물고기를 놓친 시각
+    this.hookRehookDelay = 250;    // 놓친 직후 재후킹까지 대기 시간(ms)
   }
 
   setSeason(season) {
@@ -286,12 +290,15 @@ class Game {
 
     // 훅 → 물고기 충돌
     if (!this.hook.fish && this.hook.mode === "DOWN") {
-      for (const f of this.school) {
-        if (!f.caught && dist(this.hook.x, this.hook.y, f.x, f.y) < this.hook.r + f.r) {
-          this.hook.onHook(f);
-          this.gaugeLastHit = millis();      // 훅킹 시 기준 시간
-          this.spaceSpamStreak = 0;
-          break;
+      // 최근 이탈 이후 일정 시간 동안은 재후킹 방지
+      if (millis() - this.lastHookEscapeTime >= this.hookRehookDelay) {
+        for (const f of this.school) {
+          if (!f.caught && dist(this.hook.x, this.hook.y, f.x, f.y) < this.hook.r + f.r) {
+            this.hook.onHook(f);
+            this.gaugeLastHit = millis();      // 훅킹 시 기준 시간
+            this.spaceSpamStreak = 0;
+            break;
+          }
         }
       }
     }
@@ -337,6 +344,8 @@ class Game {
       const timeout = 2500;
       if (this.gaugeLastHit > 0 && millis() - this.gaugeLastHit > timeout) {
         this.hook.forceEscape();
+        // 일정 시간 히트 없어서 도망간 시각 기록
+        this.lastHookEscapeTime = millis();
       }
     } else {
       this.gaugeActive = false;
@@ -939,8 +948,12 @@ class Game {
         this.hook.forceFullMiss();
         this.spaceSpamStreak = 0;
 
+        // 연타로 인한 완전 실패도 MISS 이펙트 표시
         this.gaugeEffect = "MISS";
         this.gaugeEffectTime = millis();
+        // 방금 물고기를 놓친 시각 기록
+        this.lastHookEscapeTime = millis();
+
         return;
       }
     }
@@ -977,6 +990,8 @@ class Game {
       const generalEscapeChance = 0.15;
       if (random() < generalEscapeChance) {
         this.hook.forceEscape();
+        // 방금 물고기를 놓친 시각 기록
+        this.lastHookEscapeTime = millis();
       }
     }
   }
