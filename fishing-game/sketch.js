@@ -930,7 +930,7 @@ class Game {
     this.lastSpaceTime = now;
 
     // 연타 카운트
-    const spamThreshold = 200;
+    const spamThreshold = 260;
     const maxSpamStreak = 12;
     if (dt < spamThreshold) {
       this.spaceSpamStreak = min(this.spaceSpamStreak + 1, maxSpamStreak);
@@ -939,9 +939,9 @@ class Game {
     }
     
     if (this.spaceSpamStreak > 3) {
-      const minEscapeChance = 0.2;
-      const maxEscapeChance = 0.8;
-      const k = map(this.spaceSpamStreak, 6, maxSpamStreak, 0, 1, true);
+      const minEscapeChance = 0.35;
+      const maxEscapeChance = 0.9;
+      const k = map(this.spaceSpamStreak, 4, maxSpamStreak, 0, 1, true);
       const escapeChance = lerp(minEscapeChance, maxEscapeChance, k);
 
       if (random() < escapeChance) {
@@ -987,7 +987,7 @@ class Game {
       this.gaugeEffect = "MISS";
       this.gaugeEffectTime = millis();
 
-      const generalEscapeChance = 0.15;
+      const generalEscapeChance = 0.2;
       if (random() < generalEscapeChance) {
         this.hook.forceEscape();
         // 방금 물고기를 놓친 시각 기록
