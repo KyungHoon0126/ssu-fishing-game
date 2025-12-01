@@ -4,7 +4,7 @@ let game;
 let bgm;
 let fishImages = {};
 
-// 핵심 p5 생명주기 훅들은 Game 인스턴스에게 처리를 위임한다.
+// 핵심 p5 생명주기 훅들은 Game 인스턴스에 처리 위임
 // p5의 preload 단계에서 BGM과 모든 물고기 이미지를 미리 불러온다.
 function preload() {
   console.log("preload 시작");
@@ -28,7 +28,7 @@ function preload() {
   }
 }
 
-// 캔버스를 생성하고 Game 객체를 초기화한다.
+// 캔버스를 생성하고 Game 객체를 초기화
 function setup() {
   const c = createCanvas(900, 560);
   c.parent("wrap");
@@ -37,18 +37,18 @@ function setup() {
   game = new Game();
 }
 
-// 매 프레임마다 Game 업데이트와 렌더링을 위임한다.
+// 매 프레임마다 Game 업데이트와 렌더링을 위임
 function draw() {
   game.update();
   game.render();
 }
 
-// ENTER 입력을 다루는 헬퍼로 키코드 차이를 흡수한다.
+// ENTER 입력을 다루는 헬퍼로 키코드 차이를 흡수
 function isEnter() {
   return keyCode === ENTER || keyCode === 13 || key === "Enter";
 }
 
-// 상태에 따라 메뉴, 정보창, 플레이 중 키 입력을 처리한다.
+// 상태에 따라 메뉴, 정보창, 플레이 중 키 입력 처리
 function keyPressed() {
   const lowerKey = (key || "").toLowerCase();
   if (game.state === "MENU" && isEnter()) {
@@ -81,14 +81,14 @@ function keyPressed() {
   }
 }
 
-// 방향키를 뗄 때 배의 이동을 즉시 멈춘다.
+// 방향키를 뗄 때 배의 이동을 즉시 멈춤
 function keyReleased() {
   if (keyCode === LEFT_ARROW || keyCode === RIGHT_ARROW) {
     if (game && game.boat) game.boat.stop();
   }
 }
 
-// 각 게임 상태별로 클릭을 버튼/도감/후크 토글에 연결한다.
+// 각 게임 상태별로 클릭을 버튼/도감/후크 토글에 연결
 function mousePressed() {
   if (game.state === "MENU") {
     if (game.handleSeasonTabClick(mouseX, mouseY)) return;
@@ -117,7 +117,7 @@ function mousePressed() {
   }
 }
 
-// 정보창 또는 도감 열람 시 스크롤 입력을 처리한다.
+// 정보창 또는 도감 열람 시 스크롤 입력을 처리
 function mouseWheel(event) {
   if (game.state !== "INFO" && !game.pokedexOpen) return;
 
