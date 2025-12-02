@@ -101,7 +101,14 @@
   };
 
   // 설명 텍스트 영역에 붙는 커스텀 스크롤바 그리기
-  Game.prototype.drawInfoScrollbar = function (x, y, h, totalHeight) {
+  Game.prototype.drawInfoScrollbar = function (x, y, h, totalHeight, opts) {
+    const options = opts || {};
+    const scrollValue =
+      typeof options.scroll === "number" ? options.scroll : this.infoScroll;
+    const scrollMax =
+      typeof options.scrollMax === "number"
+        ? options.scrollMax
+        : this.infoScrollMax;
     const trackW = 8;
     push();
     rectMode(CENTER);
@@ -112,8 +119,7 @@
     const visibleRatio = h / totalHeight;
     const knobH = max(30, h * visibleRatio);
     const available = h - knobH;
-    const progress =
-      this.infoScrollMax === 0 ? 0 : this.infoScroll / this.infoScrollMax;
+    const progress = scrollMax === 0 ? 0 : scrollValue / scrollMax;
     const knobCenterY = y + knobH / 2 + available * progress;
 
     fill(255, 180);
