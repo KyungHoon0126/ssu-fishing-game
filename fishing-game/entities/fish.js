@@ -14,6 +14,10 @@ class Fish {
     this.name = name;
     this.noiseSeed = random(1000);
     this.flip = this.vx < 0 ? 1 : -1;
+    this.hookedBaseX = null;
+    this.hookedPhase = random(TWO_PI);
+    this.caught = false;
+    this.hookedPhase = random(TWO_PI);
   }
 
   // 주어진 계절 데이터에서 무작위 물고기 설정을 뽑아 인스턴스 생성
@@ -35,8 +39,51 @@ class Fish {
     );
   }
 
-  // 경계에 닿으면 방향을 반전시키 유영
+  // 경계에 닿으면 방향을 반전시켜 유영
+  updateHooked(hook) {
+    if (this.hookedBaseX === null) this.hookedBaseX = this.x;
+
+    // 물고기 크기별 흔들림 스케일 (큰 물고기일수록 더 넓게/더 많이 흔들림)
+    const minR = game.gauge.minR;
+    const maxR = game.gauge.maxR;
+    const sizeT = constrain((this.r - minR) / (maxR - minR), 0, 1);
+
+    // 흔들림 범위(진폭): 전체적으로 키우고 + 큰 물고기일수록 더 큼
+    const baseAmp = 14; // 전체 흔들림 기본 폭(전보다 크게)
+    const extraAmp = 32; // 큰 물고기 가산 폭
+    const amp = baseAmp + extraAmp * sizeT;
+
+    // 흔들림 속도: 큰 물고기일수록 조금 느리게
+    const baseFreq = 0.06;
+    const slowDown = 0.03;
+    const freq = baseFreq - slowDown * sizeT;
+
+    this.hookedPhase += freq;
+
+    // 좌우 흔들림
+    const targetX = this.hookedBaseX + sin(this.hookedPhase) * amp;
+
+    // 화면 밖으로 너무 나가지 않게 제한
+    const clampX = constrain(targetX, this.r * 2, width - this.r * 2);
+
+    this.x = clampX;
+    this.flip = sin(this.hookedPhase) >= 0 ? -1 : 1;
+  }
+
   update() {
+    // 훅에 걸린 상태에서도 좌우로만 계속 움직이도록 한다.
+    if (this.caught) {
+      const wobbleX = sin(frameCount * 0.25 + this.hookedPhase) * 1.8;
+      this.x += wobbleX;
+
+      // 화면 밖으로 튀거나 벽을 계속 뚫지 않게 최소한으로 클램프한다.
+      this.x = constrain(this.x, 20, width - 20);
+
+      // 훅킹 중에는 좌우 방향(뒤집힘)도 흔들림 방향에 맞춰 자연스럽게 갱신한다.
+      this.flip = wobbleX < 0 ? 1 : -1;
+      return;
+    }
+
     if (this.x < 20 || this.x > width - 20) this.vx *= -1;
     if (this.y < 160 || this.y > height - 80) this.vy *= -1;
     this.x += this.vx;

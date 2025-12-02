@@ -154,11 +154,29 @@ class Game {
     if (this.state !== "PLAY") return;
 
     this.boat.update();
-    for (const f of this.school) f.update();
     this.hook.update();
+
+    // 훅킹된 물고기는 '잡혀서 고정'이 아니라 좌우로 저항하며 움직이도록 업데이트한다.
+    for (const f of this.school) {
+      const isHookedFish = this.hook && this.hook.mode === "HOOKED" && this.hook.fish === f;
+
+      if (isHookedFish) {
+        if (typeof f.updateHooked === "function") {
+          f.updateHooked(this.hook);
+        } else if (typeof f.update === "function" && f.update.length >= 1) {
+          f.update(true, this.hook);
+        } else if (typeof f.update === "function") {
+          f.update();
+        }
+      } else {
+        f.update();
+      }
+    }
 
     // 낚싯줄이 내려가는 중, 재후킹 쿨타임이 끝났을 때만 훅킹 시도
     if (!this.hook.fish && this.hook.mode === "DOWN") {
+      // Hook에서 잠근 시간까지는 재후킹 금지
+      if (millis() < (this.hook.disableHookUntil || 0)) return;
       // 최근 이탈 이후 일정 시간 동안은 재후킹 방지
       if (millis() - this.lastHookEscapeTime >= this.hookRehookDelay) {
         for (const f of this.school) {
