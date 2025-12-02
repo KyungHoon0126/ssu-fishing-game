@@ -53,6 +53,7 @@ class Hook {
       }
     } else if (this.mode === "HOOKED" && this.fish) {
       const fish = this.fish;
+
       // 후킹 중에는 물고기가 좌우로 움직이고, 훅은 그 움직임을 추적한다.
       if (this.hookBaseX === undefined) this.hookBaseX = this.x;
       if (this.hookPhase === undefined) this.hookPhase = 0;
@@ -70,9 +71,11 @@ class Hook {
   onHook(fish) {
     // 이미 훅킹 중이면 다른 물고기로 교체되지 않도록 방어한다.
     if (this.mode === "HOOKED" && this.fish) return;
+
     this.fish = fish;
     this.mode = "HOOKED";
     fish.caught = true;
+
     this.hookOffsetY = 18;
     this.hookBaseX = this.x;
     this.hookPhase = 0;
@@ -82,10 +85,12 @@ class Hook {
   // 실패 판정 시 물고기를 놓치고 다시 내리기
   forceEscape() {
     if (!this.fish) return;
+
     this.fish.hookedBaseX = null;
     this.fish.caught = false;
     this.fish = null;
     this.mode = "DOWN";
+
     // 훅 재후킹 쿨타임 갱신
     if (typeof game !== "undefined") game.lastHookEscapeTime = millis();
     this.disableHookUntil = millis() + 1000;
@@ -94,10 +99,12 @@ class Hook {
   // 완전 실패 시 낚싯줄을 위로 끌어올리기
   forceFullMiss() {
     if (!this.fish) return;
+
     this.fish.hookedBaseX = null;
     this.fish.caught = false;
     this.fish = null;
     this.mode = "UP";
+
     // 훅 재후킹 쿨타임 갱신
     if (typeof game !== "undefined") game.lastHookEscapeTime = millis();
     this.disableHookUntil = millis() + 1000;
@@ -116,14 +123,12 @@ class Hook {
       1
     );
     const sizeFactor = lerp(1.0, 0.6, sizeRatio);
-    const baitEffects =
-      game && typeof game.getActiveBaitEffects === "function"
-        ? game.getActiveBaitEffects()
-        : { reelBonus: 1 };
-    const step = baseStep * sizeFactor * mult * (baitEffects.reelBonus || 1);
+    const step = baseStep * sizeFactor * mult;
+
     // 스페이스바로 당기면 훅 위치가 올라가고, 다음 update()에서 물고기가 훅을 따라오며 줄도 자연스럽게 짧아진다.
     this.y -= step;
     if (this.y < this.boat.hookY()) this.y = this.boat.hookY();
+
     // 후킹 중에는 상하 이동을 pullStep에서만 반영해 물고기가 자연스럽게 같이 딸려 올라오게 한다.
     this.fish.y = this.y + this.hookOffsetY;
   }

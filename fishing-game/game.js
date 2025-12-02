@@ -265,7 +265,9 @@ class Game {
       g.h = g.baseH * sizeScale;
 
       // 일정 시간 히트 없으면 이탈
-      const timeout = 2500;
+      const baseTimeout = 4500;
+      const timeoutPenalty = lerp(0, 1600, normR);
+      const timeout = baseTimeout - timeoutPenalty;
       if (this.gaugeLastHit > 0 && millis() - this.gaugeLastHit > timeout) {
         this.hook.forceEscape();
         this.lastHookEscapeTime = millis();
