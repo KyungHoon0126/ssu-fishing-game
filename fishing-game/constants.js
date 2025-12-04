@@ -213,7 +213,7 @@ const BAIT_TYPES = [
     effects: {
       toleranceBonus: 0,
       valueMultiplier: 1,
-      reelBonus: 1,
+      reelBonus: 1.0,
     },
   },
   {
@@ -225,7 +225,7 @@ const BAIT_TYPES = [
     effects: {
       toleranceBonus: 0,
       valueMultiplier: 1,
-      reelBonus: 1,
+      reelBonus: 1.8,
     },
   },
   {
@@ -237,7 +237,7 @@ const BAIT_TYPES = [
     effects: {
       toleranceBonus: 0,
       valueMultiplier: 1,
-      reelBonus: 1,
+      reelBonus: 2.5,
     },
   },
 ];

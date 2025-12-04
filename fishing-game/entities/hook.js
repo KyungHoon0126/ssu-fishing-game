@@ -113,18 +113,33 @@ class Hook {
   // 게이지 히트 시 낚싯줄을 일정 단계만큼 끌어올리기
   pullStep(mult = 1) {
     if (this.mode !== "HOOKED" || !this.fish) return;
+
+    // 미끼 효과 데이터 가져오기
+    const effects = game.getActiveBaitEffects();
+    const baitMultiplier = effects.reelBonus || 1;
+
     const distFromBoat = this.y - this.boat.hookY();
     const depthRatio = constrain(distFromBoat / this.lenMax, 0, 1);
     const baseStep = lerp(this.minStep, this.maxStep, depthRatio);
+    
     const r = this.fish.r;
     const sizeRatio = constrain(
       (r - game.gauge.minR) / (game.gauge.maxR - game.gauge.minR),
       0,
       1
     );
-    const sizeFactor = lerp(1.0, 0.6, sizeRatio);
-    const step = baseStep * sizeFactor * mult;
+    
+    let sizeFactor = lerp(1.0, 0.6, sizeRatio);
 
+    if (baitMultiplier >= 1.5) {
+      sizeFactor = lerp(sizeFactor, 1.0, 0.5); 
+    }
+
+    let step = baseStep * sizeFactor;
+
+    step *= baitMultiplier;
+    step *= mult;
+    
     // 스페이스바로 당기면 훅 위치가 올라가고, 다음 update()에서 물고기가 훅을 따라오며 줄도 자연스럽게 짧아진다.
     this.y -= step;
     if (this.y < this.boat.hookY()) this.y = this.boat.hookY();
@@ -138,12 +153,42 @@ class Hook {
     stroke(70);
     strokeWeight(2);
     line(this.boat.x, this.boat.hookY() - 32, this.x, this.y);
+
+    push();
+    translate(this.x, this.y);
+
+    // 바늘 몸체
     noStroke();
     fill(230);
-    circle(this.x, this.y, this.r * 2);
+    circle(0, 0, this.r * 2);
+
+    // 바늘 갈고리
     stroke(80);
     strokeWeight(3);
     noFill();
-    arc(this.x, this.y + 6, 16, 16, PI * 0.1, PI * 1.2);
+    arc(0, 6, 16, 16, PI * 0.1, PI * 1.2);
+
+    // 미끼 이미지
+    const baitId = game.activeBaitId || "BASIC";
+    const baitImg = baitImages[baitId];
+
+    if (baitImg) {
+      push();
+      translate(0, 10); 
+
+      const swaySpeed = 0.15;
+      const swayAngle = 0.15; 
+      rotate(sin(frameCount * swaySpeed) * swayAngle);
+
+      imageMode(CENTER);
+      const drawW = 24;
+      const scale = drawW / baitImg.width;
+      const drawH = baitImg.height * scale;
+      
+      image(baitImg, 0, 0, drawW, drawH);
+      pop();
+    }
+
+    pop();
   }
 }

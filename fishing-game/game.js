@@ -40,7 +40,7 @@ class Game {
     this.ownedBaits = {};
     this.activeBaitId = "BASIC";
     this.runEarnings = 0;
-    this.baitEffectsEnabled = false; // 향후 기능 토글
+    this.baitEffectsEnabled = true;
     this.menuOverlayScroll = 0;
     this.menuOverlayScrollMax = 0;
     this.menuOverlayContentHeight = 0;
