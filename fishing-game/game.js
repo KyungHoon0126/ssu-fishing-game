@@ -234,6 +234,9 @@ class Game {
       this.fishScoreMap[label] = (this.fishScoreMap[label] || 0) + f.score;
       const payout = this.calcFishPayout(f);
       this.addMoney(payout);
+      if (typeof playRewardSound === "function") {
+        playRewardSound();
+      }
       this.school = this.school.filter((x) => x !== f);
       this.school.push(Fish.randomBySeason(this.season));
       this.hook.reset(false);
@@ -1014,6 +1017,9 @@ class Game {
     if (!this.canAfford(bait.price)) return false;
     this.money -= bait.price;
     this.ownedBaits[id] = true;
+    if (typeof playRewardSound === "function") {
+      playRewardSound();
+    }
     return true;
   }
 

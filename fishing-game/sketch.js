@@ -7,6 +7,11 @@ let backgroundImages = {};
 let sfxController = {
   gauge: {},
 };
+let rewardSfx = null;
+let uiImages = {
+  shop: null,
+  inventory: null,
+};
 
 const AUDIO_BASE_PATH = "Resources/Audio/";
 const BACKGROUND_BASE_PATH = "Resources/Background/";
@@ -31,6 +36,7 @@ const GAUGE_SFX_FILES = {
   MISS: "miss.mp3",
   PERFECT: "Perfect.mp3",
 };
+const REWARD_SFX_FILE = "코인2.mp3";
 
 let bgmController = {
   menu: null,
@@ -93,6 +99,23 @@ function preload() {
       (err) => console.error(`${effect} SFX 로드 실패`, err)
     );
   }
+
+  rewardSfx = loadSound(
+    "Resources/코인2.mp3",
+    () => console.log("코인 보상 SFX 로드 성공"),
+    (err) => console.error("코인 보상 SFX 로드 실패", err)
+  );
+
+  uiImages.shop = loadImage(
+    "Resources/상점.png",
+    () => console.log("상점 아이콘 로드 성공"),
+    (err) => console.error("상점 아이콘 로드 실패", err)
+  );
+  uiImages.inventory = loadImage(
+    "Resources/보관함.png",
+    () => console.log("보관함 아이콘 로드 성공"),
+    (err) => console.error("보관함 아이콘 로드 실패", err)
+  );
 
   const allFish = [];
   for (const season in SEASON_DATA) {
@@ -348,4 +371,13 @@ function playGaugeFeedbackSound(effect) {
   if (typeof sfx.play === "function") {
     sfx.play();
   }
+}
+
+function playRewardSound() {
+  if (!rewardSfx) return;
+  if (typeof rewardSfx.isLoaded === "function" && !rewardSfx.isLoaded()) return;
+  if (typeof rewardSfx.isPlaying === "function" && rewardSfx.isPlaying()) {
+    if (typeof rewardSfx.stop === "function") rewardSfx.stop();
+  }
+  if (typeof rewardSfx.play === "function") rewardSfx.play();
 }

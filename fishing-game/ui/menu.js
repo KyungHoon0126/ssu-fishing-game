@@ -179,83 +179,20 @@
   Game.prototype.drawMenuUtilityGlyph = function (type, cx, cy, r) {
     push();
     translate(cx, cy);
-    stroke(20, 70, 110);
-    strokeWeight(2.4);
-    if (type === "SHOP") {
-      // 코인 형태: 노란 원 + 달러 심볼
-      noStroke();
-      fill(255, 208, 90, 245);
-      circle(0, 0, r * 1.45);
-      fill(255, 186, 60, 255);
-      circle(0, 0, r * 1.1);
-      noFill();
-      stroke(255, 230, 160);
-      strokeWeight(2);
-      circle(0, 0, r * 0.95);
-      stroke(255, 255, 255, 220);
-      strokeWeight(3);
-      // 달러의 S 곡선을 간단히 표현
-      bezier(
-        -r * 0.35,
-        r * 0.15,
-        -r * 0.25,
-        r * 0.45,
-        r * 0.25,
-        r * 0.35,
-        r * 0.3,
-        r * 0.05
-      );
-      bezier(
-        -r * 0.3,
-        -r * 0.05,
-        -r * 0.25,
-        -r * 0.35,
-        r * 0.2,
-        -r * 0.35,
-        r * 0.35,
-        -r * 0.15
-      );
-      strokeWeight(2.6);
-      line(0, -r * 0.45, 0, -r * 0.1);
-      line(0, r * 0.1, 0, r * 0.45);
+    const img = type === "SHOP" ? uiImages?.shop : uiImages?.inventory;
+    if (img) {
+      imageMode(CENTER);
+      const scale = r * 1.6;
+      image(img, 0, 0, scale, scale);
     } else {
-      // INVENTORY: 노란 가방 + 갈색 뚜껑 표현
-      const bagW = r * 1.55;
-      const bagH = r * 1.2;
-      const flapH = bagH * 0.55;
-      rectMode(CENTER);
-
-      // 본체
-      noStroke();
-      fill(255, 200, 85, 240);
-      rect(0, 6, bagW, bagH, 16);
-
-      // 측면 포켓 음영
-      fill(240, 170, 40, 230);
-      rect(-bagW * 0.32, 8, bagW * 0.25, bagH * 0.65, 10);
-
-      // 덮개
-      fill(120, 70, 30, 250);
-      rect(0, -bagH * 0.15, bagW * 0.95, flapH, 14, 14, 18, 18);
-
-      // 버클 스트랩
-      fill(90, 50, 20, 230);
-      rect(-bagW * 0.22, 8, bagW * 0.12, bagH * 0.7, 8);
-      rect(bagW * 0.22, 8, bagW * 0.12, bagH * 0.7, 8);
-      fill(255, 220);
-      rect(-bagW * 0.22, 2, bagW * 0.07, bagH * 0.25, 4);
-      rect(bagW * 0.22, 2, bagW * 0.07, bagH * 0.25, 4);
-
-      // 말아 넣은 지도 느낌
-      fill(255, 240, 210);
-      rect(bagW * 0.4, -bagH * 0.35, bagW * 0.2, bagH * 0.35, 10);
-      fill(250, 210, 170);
-      arc(bagW * 0.4, -bagH * 0.53, bagW * 0.2, bagH * 0.23, 0, PI);
-
-      // 하이라이트
-      noStroke();
-      fill(255, 255, 255, 25);
-      rect(-bagW * 0.1, -bagH * 0.05, bagW * 0.25, bagH * 0.6, 12);
+      stroke(20, 70, 110);
+      strokeWeight(2.4);
+      noFill();
+      circle(0, 0, r * 1.2);
+      line(-r * 0.4, 0, r * 0.4, 0);
+      if (type === "SHOP") {
+        line(0, -r * 0.4, 0, r * 0.4);
+      }
     }
     pop();
   };

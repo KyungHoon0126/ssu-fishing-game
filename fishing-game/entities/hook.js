@@ -121,25 +121,25 @@ class Hook {
     const distFromBoat = this.y - this.boat.hookY();
     const depthRatio = constrain(distFromBoat / this.lenMax, 0, 1);
     const baseStep = lerp(this.minStep, this.maxStep, depthRatio);
-    
+
     const r = this.fish.r;
     const sizeRatio = constrain(
       (r - game.gauge.minR) / (game.gauge.maxR - game.gauge.minR),
       0,
       1
     );
-    
+
     let sizeFactor = lerp(1.0, 0.6, sizeRatio);
 
     if (baitMultiplier >= 1.5) {
-      sizeFactor = lerp(sizeFactor, 1.0, 0.5); 
+      sizeFactor = lerp(sizeFactor, 1.0, 0.5);
     }
 
     let step = baseStep * sizeFactor;
 
     step *= baitMultiplier;
     step *= mult;
-    
+
     // 스페이스바로 당기면 훅 위치가 올라가고, 다음 update()에서 물고기가 훅을 따라오며 줄도 자연스럽게 짧아진다.
     this.y -= step;
     if (this.y < this.boat.hookY()) this.y = this.boat.hookY();
@@ -174,17 +174,17 @@ class Hook {
 
     if (baitImg) {
       push();
-      translate(0, 10); 
+      translate(0, 14);
 
-      const swaySpeed = 0.15;
-      const swayAngle = 0.15; 
+      const swaySpeed = 0.1;
+      const swayAngle = 0.2;
       rotate(sin(frameCount * swaySpeed) * swayAngle);
 
       imageMode(CENTER);
-      const drawW = 24;
+      const drawW = 42;
       const scale = drawW / baitImg.width;
       const drawH = baitImg.height * scale;
-      
+
       image(baitImg, 0, 0, drawW, drawH);
       pop();
     }
