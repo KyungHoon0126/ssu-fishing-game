@@ -46,8 +46,18 @@ let bgmController = {
   countdown: null,
   seasons: {},
   current: null,
-  volume: 0.1,
+  volume: 0.07,
+  muted: false,
 };
+
+function toggleMute() {
+  bgmController.muted = !bgmController.muted;
+  if (bgmController.muted) {
+    outputVolume(0, 0.1);
+  } else {
+    outputVolume(1, 0.1);
+  }
+}
 
 // 핵심 p5 생명주기 훅들은 Game 인스턴스에 처리 위임
 // p5의 preload 단계에서 BGM과 모든 물고기 이미지를 미리 불러온다.
@@ -214,6 +224,8 @@ function keyReleased() {
 
 // 각 게임 상태별로 클릭을 버튼/도감/후크 토글에 연결
 function mousePressed() {
+  if (game && game.handleSoundToggleClick(mouseX, mouseY)) return;
+
   if (typeof getAudioContext === "function") {
     const audioCtx = getAudioContext();
     if (audioCtx && audioCtx.state !== "running") {

@@ -4,7 +4,7 @@ class Game {
   constructor() {
     this.state = "MENU"; // 가능한 상태: MENU | INFO | PLAY | RESULT
     this.season = "SPRING";
-    this.duration = 15; // 게임 시간
+    this.duration = 60; // 게임 시간
     this.startMillis = 0;
     this.score = 0;
     this.best = 0;
@@ -311,6 +311,7 @@ class Game {
 
     if (this.state === "MENU") {
       this.drawMenuScreen();
+      this.drawSoundToggle();
       return;
     }
 
@@ -372,6 +373,83 @@ class Game {
         text(this.credits[i], width / 2, lineY);
       }
     }
+  }
+
+  // 사운드 토글 버튼 영역
+  getSoundToggleBounds() {
+    // 메뉴 화면: 로고 우측에 배치
+    if (this.state === "MENU") {
+      return {
+        x: 126,
+        y: 66,
+        r: 16,
+      };
+    }
+    // PLAY 화면: 상단 HUD 남은 시간 우측에 배치
+    if (this.state === "PLAY") {
+      return {
+        x: 130,
+        y: 20,
+        r: 12,
+      };
+    }
+    // 그 외 화면 (INFO, RESULT)에서는 버튼 영역 없음 (클릭 불가)
+    return { x: -100, y: -100, r: 0 };
+  }
+
+  drawSoundToggle() {
+    const btn = this.getSoundToggleBounds();
+    const isMuted = bgmController.muted;
+    const hover = dist(mouseX, mouseY, btn.x, btn.y) < btn.r;
+
+    push();
+    translate(btn.x, btn.y);
+
+    // 배경 원
+    noStroke();
+    fill(0, 100);
+    if (hover) fill(50, 150);
+    circle(0, 0, btn.r * 2.4);
+
+    // 아이콘 중앙 정렬을 위한 보정
+    translate(-2, 0);
+
+    // 스피커 아이콘
+    stroke(255);
+    strokeWeight(2);
+    noFill();
+
+    // 스피커 본체
+    beginShape();
+    vertex(-6, -4);
+    vertex(-2, -4);
+    vertex(4, -8);
+    vertex(4, 8);
+    vertex(-2, 4);
+    vertex(-6, 4);
+    endShape(CLOSE);
+
+    // 소리 파동 (ON일 때만)
+    if (!isMuted) {
+      arc(6, 0, 8, 8, -PI / 3, PI / 3);
+      arc(6, 0, 14, 14, -PI / 3, PI / 3);
+    } else {
+      // MUTE 표시 (X)
+      stroke(255, 100, 100);
+      line(6, -4, 12, 4);
+      line(12, -4, 6, 4);
+    }
+
+    pop();
+  }
+
+  handleSoundToggleClick(px, py) {
+    const btn = this.getSoundToggleBounds();
+    if (dist(px, py, btn.x, btn.y) < btn.r) {
+      toggleMute();
+      return true;
+    }
+    return false;
   }
 
   // 계절에 맞는 배경 그래디언트/이미지와 장식 그리기
@@ -458,6 +536,8 @@ class Game {
       fill(255, 240);
       text(`현재 미끼 : ${activeBait.name}`, 12, 52);
     }
+
+    this.drawSoundToggle();
 
     // 게이지
     if (this.gaugeActive) {
