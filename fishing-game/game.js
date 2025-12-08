@@ -4,7 +4,7 @@ class Game {
   constructor() {
     this.state = "MENU"; // 가능한 상태: MENU | INFO | PLAY | RESULT
     this.season = "SPRING";
-    this.duration = 60; // 게임 시간
+    this.duration = 30; // 게임 시간
     this.startMillis = 0;
     this.score = 0;
     this.best = 0;
@@ -76,6 +76,23 @@ class Game {
     // 훅 재후킹 쿨타임 관리
     this.lastHookEscapeTime = 0; // 마지막으로 물고기를 놓친 시각
     this.hookRehookDelay = 250; // 놓친 직후 재후킹까지 대기 시간(ms)
+
+    // 엔딩 크레딧 관련
+    this.resultStartTime = 0;
+    this.creditsFinished = false;
+    this.credits = [
+      "해당 게임은 2025년 숭실대학교 디지털미디어학과",
+      "김경훈, 강성준, 박규리 학생이 개발하였습니다.",
+      "p5.js를 이용하여 제작되었습니다.",
+      "",
+      "코드에서의 AI 사용 비율은 약 30% 입니다. (코드 및 리소스 포함)",
+      "(주요 기술: ES6 Class 및 Prototype Mixin 패턴을 활용한 모듈화,",
+      "State Pattern 기반의 게임 상태 관리 및 화면 전환 최적화,",
+      "p5.sound 비동기 리소스 로딩 및 오디오 컨텍스트 제어,",
+      "Vector 연산과 Lerp 보간을 이용한 물리 엔진 및 애니메이션 구현)",
+      "",
+      "감사합니다.",
+    ];
   }
 
   // 메뉴에서 계절을 바꾸면 해당 계절 물고기를 다시 생성
@@ -158,6 +175,8 @@ class Game {
 
     if (this.state === "PLAY" && remainingTime <= 0.01) {
       this.state = "RESULT";
+      this.resultStartTime = millis();
+      this.creditsFinished = false;
       this.best = max(this.best, this.score);
       this.hook.reset(true);
       this.pokedexOpen = true; // 결과 화면 진입 시 도감 열기
@@ -303,8 +322,44 @@ class Game {
     if (this.state === "RESULT") {
       this.drawTitle("TIME UP!");
       this.drawSub(`SCORE ${this.score} | BEST ${this.best} | ENTER 재시작`);
+      this.drawResultLogo();
       if (this.pokedexOpen) {
         this.drawResultPokedex();
+      } else {
+        // 도감이 닫혀있고 5초가 지났다면 크레딧 표시
+        if (!this.creditsFinished && millis() - this.resultStartTime > 5000) {
+          this.drawCredits();
+        }
+      }
+    }
+  }
+
+  drawCredits() {
+    const elapsed = millis() - (this.resultStartTime + 5000);
+    const speed = 0.05; // 스크롤 속도
+    const startY = height + 50;
+    const lineHeight = 30;
+
+    // 마지막 줄이 화면 위로 완전히 사라졌는지 확인
+    const lastLineIndex = this.credits.length - 1;
+    const lastLineY = startY + lastLineIndex * lineHeight - elapsed * speed;
+    if (lastLineY < -50) {
+      this.creditsFinished = true;
+      return;
+    }
+
+    this.drawDimOverlay(180); // 배경을 좀 더 어둡게
+
+    textAlign(CENTER, CENTER);
+    textSize(18);
+    fill(255);
+    noStroke();
+
+    for (let i = 0; i < this.credits.length; i++) {
+      const lineY = startY + i * lineHeight - elapsed * speed;
+      // 화면 내에 있을 때만 그리기
+      if (lineY < height + 50 && lineY > -50) {
+        text(this.credits[i], width / 2, lineY);
       }
     }
   }
@@ -769,6 +824,18 @@ class Game {
     };
   }
 
+  // 결과 화면 중앙 하단에 로고 표시
+  drawResultLogo() {
+    if (!uiImages.logo) return;
+    const size = 80;
+    const x = width / 2;
+    const y = height / 2 + 100;
+    push();
+    imageMode(CENTER);
+    image(uiImages.logo, x, y, size, size);
+    pop();
+  }
+
   // 결과 화면에서 계절별 도감 표시
   drawResultPokedex() {
     this.drawDimOverlay(230);
@@ -787,6 +854,15 @@ class Game {
     strokeWeight(2);
     fill(12, 46, 78, 245); // 진한 남색 배경
     rect(panelX, panelY, panelW, panelH, 20);
+
+    // 도감 좌측 상단 로고
+    if (uiImages.logo) {
+      const logoSize = 80;
+      const logoX = panelX - panelW / 2 + margin + logoSize / 2;
+      const logoY = panelY - panelH / 2 + margin + logoSize / 2;
+      imageMode(CENTER);
+      image(uiImages.logo, logoX, logoY, logoSize, logoSize);
+    }
 
     // 제목 (현재 계절 표시)
     noStroke();
@@ -947,6 +1023,25 @@ class Game {
     }
 
     pop(); // 도감 패널 전체 push/pop 닫기
+  }
+
+  handleResultPokedexLogoClick(px, py) {
+    if (!this.pokedexOpen) return false;
+    const panelW = width * 0.85;
+    const panelH = height * 0.85;
+    const panelX = width / 2;
+    const panelY = height / 2;
+    const margin = 20;
+    const logoSize = 80;
+    const logoX = panelX - panelW / 2 + margin + logoSize / 2;
+    const logoY = panelY - panelH / 2 + margin + logoSize / 2;
+
+    const bounds = { x: logoX, y: logoY, w: logoSize, h: logoSize };
+    if (this.isPointInRect(px, py, bounds)) {
+      window.open("https://mediamba.ssu.ac.kr", "_blank");
+      return true;
+    }
+    return false;
   }
 
   // 모든 계절 물고기 정보를 하나의 배열로 펼침.

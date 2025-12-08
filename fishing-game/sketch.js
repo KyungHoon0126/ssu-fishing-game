@@ -11,6 +11,7 @@ let rewardSfx = null;
 let uiImages = {
   shop: null,
   inventory: null,
+  logo: null,
 };
 
 const AUDIO_BASE_PATH = "Resources/Audio/";
@@ -45,7 +46,7 @@ let bgmController = {
   countdown: null,
   seasons: {},
   current: null,
-  volume: 0.12,
+  volume: 0.1,
 };
 
 // 핵심 p5 생명주기 훅들은 Game 인스턴스에 처리 위임
@@ -115,6 +116,12 @@ function preload() {
     "Resources/보관함.png",
     () => console.log("보관함 아이콘 로드 성공"),
     (err) => console.error("보관함 아이콘 로드 실패", err)
+  );
+
+  uiImages.logo = loadImage(
+    "Resources/로고.png",
+    () => console.log("로고 이미지 로드 성공"),
+    (err) => console.error("로고 이미지 로드 실패", err)
   );
 
   const allFish = [];
@@ -244,6 +251,7 @@ function mousePressed() {
       }
       return;
     }
+    if (game.handleLogoClick(mouseX, mouseY)) return;
     if (game.handleMenuUtilityClick(mouseX, mouseY)) return;
     if (game.handleSeasonTabClick(mouseX, mouseY)) return;
     const btn = game.menuButtonBounds();
@@ -258,6 +266,7 @@ function mousePressed() {
     }
   } else if (game.state === "RESULT") {
     if (game.pokedexOpen) {
+      if (game.handleResultPokedexLogoClick(mouseX, mouseY)) return;
       const closeBounds = game.getPokedexCloseBounds();
       if (game.isPointInRect(mouseX, mouseY, closeBounds)) {
         game.pokedexOpen = false;

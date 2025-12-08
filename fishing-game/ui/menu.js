@@ -4,13 +4,14 @@
 
   // 메인 메뉴 타이틀, 버튼, 탭을 묶어서 렌더링
   Game.prototype.drawMenuScreen = function () {
-    this.drawTitle("SHOONG SHOONG");
+    this.drawTitle("🎣 SHOONG! SHOONG! 🦈");
     this.drawSub("시작하기를 눌러 설명 확인");
     this.drawButton(this.menuButtonBounds(), "시작하기");
     this.drawMenuCredit();
     this.drawSeasonTabs();
     this.drawMenuMoneyBadge();
     this.drawMenuUtilityIcons();
+    this.drawLogo();
     if (this.isMenuOverlayOpen()) {
       this.drawMenuOverlay();
     }
@@ -22,6 +23,9 @@
     textAlign(RIGHT, BOTTOM);
     textSize(16);
     text(this.authorCredit, width - 24, height - 18);
+
+    textAlign(LEFT, BOTTOM);
+    text("숭실대학교 디지털미디어학과", 24, height - 18);
   };
 
   // 선택 가능한 계절 탭들 버튼 형태로 출력
@@ -105,10 +109,38 @@
   Game.prototype.drawMenuMoneyBadge = function () {
     push();
     fill(255);
-    textAlign(LEFT, TOP);
+    textAlign(RIGHT, TOP);
     textSize(18);
-    text(`소지금 : ${this.money}원`, 26, 26);
+    text(`소지금 : ${this.money}원`, width - 40, 160);
     pop();
+  };
+
+  Game.prototype.logoBounds = function () {
+    const size = 80;
+    return {
+      x: 26 + size / 2,
+      y: 26 + size / 2,
+      w: size,
+      h: size,
+    };
+  };
+
+  Game.prototype.drawLogo = function () {
+    if (!uiImages.logo) return;
+    const bounds = this.logoBounds();
+    push();
+    imageMode(CENTER);
+    image(uiImages.logo, bounds.x, bounds.y, bounds.w, bounds.h);
+    pop();
+  };
+
+  Game.prototype.handleLogoClick = function (px, py) {
+    const bounds = this.logoBounds();
+    if (this.isPointInRect(px, py, bounds)) {
+      window.open("https://mediamba.ssu.ac.kr", "_blank");
+      return true;
+    }
+    return false;
   };
 
   Game.prototype.menuUtilityIconBounds = function (type) {
@@ -116,7 +148,7 @@
     const labelGap = 6;
     const labelHeight = 16;
     const totalH = size + labelGap + labelHeight;
-    const marginRight = 86;
+    const marginRight = 40;
     const gap = 18;
     const index = type === "SHOP" ? 0 : 1;
     const x = width - marginRight - index * (size + gap) - size / 2;
