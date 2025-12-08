@@ -4,7 +4,7 @@ class Game {
   constructor() {
     this.state = "MENU"; // 가능한 상태: MENU | INFO | PLAY | RESULT
     this.season = "SPRING";
-    this.duration = 30; // 게임 시간
+    this.duration = 15; // 게임 시간
     this.startMillis = 0;
     this.score = 0;
     this.best = 0;
@@ -79,6 +79,7 @@ class Game {
 
     // 엔딩 크레딧 관련
     this.resultStartTime = 0;
+    this.creditsStartTime = 0;
     this.creditsFinished = false;
     this.credits = [
       "해당 게임은 2025년 숭실대학교 디지털미디어학과",
@@ -179,6 +180,7 @@ class Game {
     if (this.state === "PLAY" && remainingTime <= 0.01) {
       this.state = "RESULT";
       this.resultStartTime = millis();
+      this.creditsStartTime = 0;
       this.creditsFinished = false;
       this.best = max(this.best, this.score);
       this.hook.reset(true);
@@ -329,16 +331,21 @@ class Game {
       if (this.pokedexOpen) {
         this.drawResultPokedex();
       } else {
-        // 도감이 닫혀있고 5초가 지났다면 크레딧 표시
-        if (!this.creditsFinished && millis() - this.resultStartTime > 5000) {
+        // 도감이 닫히면 즉시 크레딧 표시
+        if (!this.creditsFinished && this.creditsStartTime > 0) {
           this.drawCredits();
         }
       }
     }
   }
 
+  closeResultPokedex() {
+    this.pokedexOpen = false;
+    this.creditsStartTime = millis();
+  }
+
   drawCredits() {
-    const elapsed = millis() - (this.resultStartTime + 5000);
+    const elapsed = millis() - this.creditsStartTime;
     const speed = 0.05; // 스크롤 속도
     const startY = height + 50;
     const lineHeight = 30;

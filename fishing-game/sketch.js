@@ -269,7 +269,7 @@ function mousePressed() {
       if (game.handleResultPokedexLogoClick(mouseX, mouseY)) return;
       const closeBounds = game.getPokedexCloseBounds();
       if (game.isPointInRect(mouseX, mouseY, closeBounds)) {
-        game.pokedexOpen = false;
+        game.closeResultPokedex();
         return;
       }
     } else {
