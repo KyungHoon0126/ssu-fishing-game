@@ -82,14 +82,17 @@ class Game {
     this.creditsFinished = false;
     this.credits = [
       "해당 게임은 2025년 숭실대학교 디지털미디어학과",
-      "김경훈, 강성준, 박규리 학생이 개발하였습니다.",
+      "김경훈, 강성준, 박규리 학생이 제작하였습니다.",
       "p5.js를 이용하여 제작되었습니다.",
       "",
-      "코드에서의 AI 사용 비율은 약 30% 입니다. (코드 및 리소스 포함)",
-      "(주요 기술: ES6 Class 및 Prototype Mixin 패턴을 활용한 모듈화,",
-      "State Pattern 기반의 게임 상태 관리 및 화면 전환 최적화,",
-      "p5.sound 비동기 리소스 로딩 및 오디오 컨텍스트 제어,",
-      "Vector 연산과 Lerp 보간을 이용한 물리 엔진 및 애니메이션 구현)",
+      "코드에서의 AI 사용 비율은 약 30% 입니다. (코드 및 리소스 이미지, 음악 포함)",
+      "",
+      "[ p5.js 활용 및 기술적 구현 상세 ]",
+      "1. Core: preload/setup/draw 생명주기 및 Event-Driven 입력 처리",
+      "2. Rendering: push/pop 매트릭스 스택, drawingContext 클리핑, 커스텀 셰이프",
+      "3. Math/Physics: p5.Vector 기반 운동 연산, lerp/map/constrain 보간 제어",
+      "4. Audio: p5.sound 라이브러리를 활용한 비동기 리소스 로딩 및 제어",
+      "5. Architecture: ES6 Class 모듈화, Prototype Mixin, State Pattern 적용",
       "",
       "감사합니다.",
     ];
