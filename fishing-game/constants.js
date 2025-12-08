@@ -201,3 +201,43 @@ const SEASON_DATA = {
     ],
   },
 };
+
+// 상점/보관함에서 사용할 수 있는 미끼 구성 목록.
+const BAIT_TYPES = [
+  {
+    id: "BASIC",
+    name: "기본 미끼",
+    price: 0,
+    desc: "쉽게 구할 수 있는 지렁이 미끼로, 초보자에게 가장 익숙한 형태입니다.",
+    img: "지렁이.png",
+    effects: {
+      toleranceBonus: 0,
+      valueMultiplier: 1,
+      reelBonus: 1.0,
+    },
+  },
+  {
+    id: "MID",
+    name: "중급 미끼",
+    price: 160,
+    desc: "탱글한 새우 미끼로, 다소 큰 물고기를 유인하는 데 효과적입니다.",
+    img: "새우.png",
+    effects: {
+      toleranceBonus: 0,
+      valueMultiplier: 1,
+      reelBonus: 1.8,
+    },
+  },
+  {
+    id: "PREMIUM",
+    name: "고급 미끼",
+    price: 220,
+    desc: "싱싱한 오징어 조각으로, 까다로운 상급 어종을 끌어들이는 고급 미끼입니다.",
+    img: "오징어.png",
+    effects: {
+      toleranceBonus: 0,
+      valueMultiplier: 1,
+      reelBonus: 2.5,
+    },
+  },
+];

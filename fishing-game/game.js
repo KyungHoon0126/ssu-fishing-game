@@ -34,6 +34,18 @@ class Game {
     this.infoScrollMax = 0;
     this.authorCredit = "20251669 김경훈\n20253308 강성준\n20241095 박규리";
 
+    // 재화 및 미끼 상태
+    this.money = 0;
+    this.menuOverlay = null; // SHOP | INVENTORY | null
+    this.ownedBaits = {};
+    this.activeBaitId = "BASIC";
+    this.runEarnings = 0;
+    this.baitEffectsEnabled = true;
+    this.menuOverlayScroll = 0;
+    this.menuOverlayScrollMax = 0;
+    this.menuOverlayContentHeight = 0;
+    this.initializeBaitInventory();
+
     // 게이지 상태
     this.gauge = {
       x: width / 2,
@@ -59,10 +71,32 @@ class Game {
     this.spaceSpamStreak = 0;
     this.gaugeEffect = "";
     this.gaugeEffectTime = 0;
+    this.countdownTriggered = false;
 
     // 훅 재후킹 쿨타임 관리
     this.lastHookEscapeTime = 0; // 마지막으로 물고기를 놓친 시각
     this.hookRehookDelay = 250; // 놓친 직후 재후킹까지 대기 시간(ms)
+
+    // 엔딩 크레딧 관련
+    this.resultStartTime = 0;
+    this.creditsStartTime = 0;
+    this.creditsFinished = false;
+    this.credits = [
+      "해당 게임은 2025년 숭실대학교 디지털미디어학과",
+      "김경훈, 강성준, 박규리 학생이 제작하였습니다.",
+      "p5.js를 이용하여 제작되었습니다.",
+      "",
+      "코드에서의 AI 사용 비율은 약 30% 입니다. (코드 및 리소스 이미지, 음악 포함)",
+      "",
+      "[ p5.js 활용 및 기술적 구현 상세 ]",
+      "1. Core: preload/setup/draw 생명주기 및 Event-Driven 입력 처리",
+      "2. Rendering: push/pop 매트릭스 스택, drawingContext 클리핑, 커스텀 셰이프",
+      "3. Math/Physics: p5.Vector 기반 운동 연산, lerp/map/constrain 보간 제어",
+      "4. Audio: p5.sound 라이브러리를 활용한 비동기 리소스 로딩 및 제어",
+      "5. Architecture: ES6 Class 모듈화, Prototype Mixin, State Pattern 적용",
+      "",
+      "감사합니다.",
+    ];
   }
 
   // 메뉴에서 계절을 바꾸면 해당 계절 물고기를 다시 생성
@@ -81,17 +115,13 @@ class Game {
     this.startMillis = millis();
     this.fishScoreMap = {};
     this.particles = [];
-    if (
-      bgm &&
-      typeof bgm.isPlaying === "function" &&
-      typeof bgm.loop === "function"
-    ) {
-      if (!bgm.isPlaying()) {
-        bgm.loop(); // 반복 재생
-        bgm.setVolume(0.1); // 볼륨 조절
-      }
+    this.runEarnings = 0;
+    this.closeMenuOverlay();
+    this.countdownTriggered = false;
+    if (typeof playSeasonMusic === "function") {
+      playSeasonMusic(this.season);
     } else {
-      console.warn("BGM이 아직 준비되지 않았습니다.");
+      console.warn("시즌 BGM 함수를 찾을 수 없습니다.");
     }
   }
 
@@ -100,11 +130,13 @@ class Game {
     this.state = "INFO";
     this.infoScroll = 0;
     this.infoScrollMax = 0;
+    this.closeMenuOverlay();
   }
 
   // 정보 패널을 닫고 메뉴로 복귀
   closeInfo() {
     this.state = "MENU";
+    this.ensureMenuMusic();
   }
 
   // 결과 후 다시 메뉴 상태로 되돌리고 각종 수치를 리셋
@@ -116,6 +148,16 @@ class Game {
     this.school = [];
     this.spawnFishes(12);
     this.particles = [];
+    this.runEarnings = 0;
+    this.closeMenuOverlay();
+    this.countdownTriggered = false;
+    this.ensureMenuMusic();
+  }
+
+  ensureMenuMusic() {
+    if (typeof playMenuMusic === "function") {
+      playMenuMusic();
+    }
   }
 
   // 현재 계절에 맞는 물고기를 n마리 생성
@@ -133,19 +175,31 @@ class Game {
 
   // 매 프레임 호출되어 상태 전환, 물리, 훅킹 판정을 진행
   update() {
-    if (this.state === "PLAY" && this.timeLeft() <= 0.01) {
+    const remainingTime = this.timeLeft();
+
+    if (this.state === "PLAY" && remainingTime <= 0.01) {
       this.state = "RESULT";
+      this.resultStartTime = millis();
+      this.creditsStartTime = 0;
+      this.creditsFinished = false;
       this.best = max(this.best, this.score);
       this.hook.reset(true);
       this.pokedexOpen = true; // 결과 화면 진입 시 도감 열기
-      if (
-        bgm &&
-        typeof bgm.stop === "function" &&
-        typeof bgm.isPlaying === "function"
-      ) {
-        if (bgm.isPlaying()) {
-          bgm.stop();
-        }
+      if (typeof playResultMusic === "function") {
+        playResultMusic();
+      } else if (typeof stopActiveMusic === "function") {
+        stopActiveMusic();
+      }
+    }
+
+    if (
+      this.state === "PLAY" &&
+      !this.countdownTriggered &&
+      remainingTime <= 10
+    ) {
+      this.countdownTriggered = true;
+      if (typeof playCountdownMusic === "function") {
+        playCountdownMusic();
       }
     }
 
@@ -154,11 +208,30 @@ class Game {
     if (this.state !== "PLAY") return;
 
     this.boat.update();
-    for (const f of this.school) f.update();
     this.hook.update();
+
+    // 훅킹된 물고기는 '잡혀서 고정'이 아니라 좌우로 저항하며 움직이도록 업데이트한다.
+    for (const f of this.school) {
+      const isHookedFish =
+        this.hook && this.hook.mode === "HOOKED" && this.hook.fish === f;
+
+      if (isHookedFish) {
+        if (typeof f.updateHooked === "function") {
+          f.updateHooked(this.hook);
+        } else if (typeof f.update === "function" && f.update.length >= 1) {
+          f.update(true, this.hook);
+        } else if (typeof f.update === "function") {
+          f.update();
+        }
+      } else {
+        f.update();
+      }
+    }
 
     // 낚싯줄이 내려가는 중, 재후킹 쿨타임이 끝났을 때만 훅킹 시도
     if (!this.hook.fish && this.hook.mode === "DOWN") {
+      // Hook에서 잠근 시간까지는 재후킹 금지
+      if (millis() < (this.hook.disableHookUntil || 0)) return;
       // 최근 이탈 이후 일정 시간 동안은 재후킹 방지
       if (millis() - this.lastHookEscapeTime >= this.hookRehookDelay) {
         for (const f of this.school) {
@@ -183,6 +256,11 @@ class Game {
       this.caught += 1;
       const label = f.name || "FISH";
       this.fishScoreMap[label] = (this.fishScoreMap[label] || 0) + f.score;
+      const payout = this.calcFishPayout(f);
+      this.addMoney(payout);
+      if (typeof playRewardSound === "function") {
+        playRewardSound();
+      }
       this.school = this.school.filter((x) => x !== f);
       this.school.push(Fish.randomBySeason(this.season));
       this.hook.reset(false);
@@ -198,7 +276,9 @@ class Game {
 
       // 판정 범위
       const factor = lerp(1.0, g.minToleranceFactor, normR);
-      g.currentTolerance = g.baseTolerance * factor;
+      const toleranceBase = g.baseTolerance * factor;
+      const toleranceBonus = this.getActiveBaitEffects().toleranceBonus || 0;
+      g.currentTolerance = toleranceBase + toleranceBonus;
 
       // 마커 속도
       const speed = lerp(g.speedMin, g.speedMax, normR);
@@ -212,7 +292,9 @@ class Game {
       g.h = g.baseH * sizeScale;
 
       // 일정 시간 히트 없으면 이탈
-      const timeout = 2500;
+      const baseTimeout = 4500;
+      const timeoutPenalty = lerp(0, 1600, normR);
+      const timeout = baseTimeout - timeoutPenalty;
       if (this.gaugeLastHit > 0 && millis() - this.gaugeLastHit > timeout) {
         this.hook.forceEscape();
         this.lastHookEscapeTime = millis();
@@ -229,6 +311,7 @@ class Game {
 
     if (this.state === "MENU") {
       this.drawMenuScreen();
+      this.drawSoundToggle();
       return;
     }
 
@@ -236,10 +319,6 @@ class Game {
       this.drawInfoScreen();
       return;
     }
-
-    fill(16, 100, 120);
-    noStroke();
-    rect(0, height - 60, width, 60);
 
     for (const f of this.school) f.draw();
     this.boat.draw();
@@ -249,14 +328,160 @@ class Game {
     if (this.state === "RESULT") {
       this.drawTitle("TIME UP!");
       this.drawSub(`SCORE ${this.score} | BEST ${this.best} | ENTER 재시작`);
+      this.drawResultLogo();
       if (this.pokedexOpen) {
         this.drawResultPokedex();
+      } else {
+        // 도감이 닫히면 즉시 크레딧 표시
+        if (!this.creditsFinished && this.creditsStartTime > 0) {
+          this.drawCredits();
+        }
       }
     }
   }
 
-  // 계절에 맞는 배경 그래디언트와 장식 그리기
+  closeResultPokedex() {
+    this.pokedexOpen = false;
+    this.creditsStartTime = millis();
+  }
+
+  drawCredits() {
+    const elapsed = millis() - this.creditsStartTime;
+    const speed = 0.05; // 스크롤 속도
+    const startY = height + 50;
+    const lineHeight = 30;
+
+    // 마지막 줄이 화면 위로 완전히 사라졌는지 확인
+    const lastLineIndex = this.credits.length - 1;
+    const lastLineY = startY + lastLineIndex * lineHeight - elapsed * speed;
+    if (lastLineY < -50) {
+      this.creditsFinished = true;
+      return;
+    }
+
+    this.drawDimOverlay(180); // 배경을 좀 더 어둡게
+
+    textAlign(CENTER, CENTER);
+    textSize(18);
+    fill(255);
+    noStroke();
+
+    for (let i = 0; i < this.credits.length; i++) {
+      const lineY = startY + i * lineHeight - elapsed * speed;
+      // 화면 내에 있을 때만 그리기
+      if (lineY < height + 50 && lineY > -50) {
+        text(this.credits[i], width / 2, lineY);
+      }
+    }
+  }
+
+  // 사운드 토글 버튼 영역
+  getSoundToggleBounds() {
+    // 메뉴 화면: 로고 우측에 배치
+    if (this.state === "MENU") {
+      return {
+        x: 126,
+        y: 66,
+        r: 16,
+      };
+    }
+    // PLAY 화면: 상단 HUD 남은 시간 우측에 배치
+    if (this.state === "PLAY") {
+      return {
+        x: 130,
+        y: 20,
+        r: 12,
+      };
+    }
+    // 그 외 화면 (INFO, RESULT)에서는 버튼 영역 없음 (클릭 불가)
+    return { x: -100, y: -100, r: 0 };
+  }
+
+  drawSoundToggle() {
+    const btn = this.getSoundToggleBounds();
+    const isMuted = bgmController.muted;
+    const hover = dist(mouseX, mouseY, btn.x, btn.y) < btn.r;
+
+    push();
+    translate(btn.x, btn.y);
+
+    // 배경 원
+    noStroke();
+    fill(0, 100);
+    if (hover) fill(50, 150);
+    circle(0, 0, btn.r * 2.4);
+
+    // 아이콘 중앙 정렬을 위한 보정
+    translate(-2, 0);
+
+    // 스피커 아이콘
+    stroke(255);
+    strokeWeight(2);
+    noFill();
+
+    // 스피커 본체
+    beginShape();
+    vertex(-6, -4);
+    vertex(-2, -4);
+    vertex(4, -8);
+    vertex(4, 8);
+    vertex(-2, 4);
+    vertex(-6, 4);
+    endShape(CLOSE);
+
+    // 소리 파동 (ON일 때만)
+    if (!isMuted) {
+      arc(6, 0, 8, 8, -PI / 3, PI / 3);
+      arc(6, 0, 14, 14, -PI / 3, PI / 3);
+    } else {
+      // MUTE 표시 (X)
+      stroke(255, 100, 100);
+      line(6, -4, 12, 4);
+      line(12, -4, 6, 4);
+    }
+
+    pop();
+  }
+
+  handleSoundToggleClick(px, py) {
+    const btn = this.getSoundToggleBounds();
+    if (dist(px, py, btn.x, btn.y) < btn.r) {
+      toggleMute();
+      return true;
+    }
+    return false;
+  }
+
+  // 계절에 맞는 배경 그래디언트/이미지와 장식 그리기
   drawBackground() {
+    const hasImage = this.drawSeasonBackgroundImage();
+    if (!hasImage) {
+      this.drawGradientBackground();
+    }
+
+    this.drawSurfaceHighlights();
+
+    if (this.season === "SUMMER") this.drawSeaweed();
+    else if (this.season === "SPRING") this.drawSpringAnemones();
+    else if (this.season === "AUTUMN") this.drawAutumnRocks();
+    else if (this.season === "WINTER") this.drawWinterIceFloes();
+  }
+
+  drawSeasonBackgroundImage() {
+    if (typeof backgroundImages === "undefined") return false;
+    const img = backgroundImages[this.season];
+    if (!(img && img.width && img.height)) return false;
+    push();
+    imageMode(CENTER);
+    const scale = Math.max(width / img.width, height / img.height);
+    const drawW = img.width * scale;
+    const drawH = img.height * scale;
+    image(img, width / 2, height / 2, drawW, drawH);
+    pop();
+    return true;
+  }
+
+  drawGradientBackground() {
     const bgPreset = {
       SPRING: { top: color(205, 235, 255), bottom: color(80, 160, 210) },
       SUMMER: { top: color(80, 200, 255), bottom: color(0, 100, 180) },
@@ -273,7 +498,9 @@ class Game {
       stroke(c);
       line(0, y, width, y);
     }
+  }
 
+  drawSurfaceHighlights() {
     stroke(255, 255, 255, 70);
     strokeWeight(2.5);
     const surfaceY = this.boat.y + 20;
@@ -281,11 +508,6 @@ class Game {
       const y = surfaceY + sin(frameCount * 0.05 + x * 0.05) * 3;
       line(x, y, x + 12, y);
     }
-
-    if (this.season === "SUMMER") this.drawSeaweed();
-    else if (this.season === "SPRING") this.drawSpringAnemones();
-    else if (this.season === "AUTUMN") this.drawAutumnRocks();
-    else if (this.season === "WINTER") this.drawWinterIceFloes();
   }
 
   // 상단 HUD, 게이지, 도감 패널 등 그리기
@@ -305,7 +527,17 @@ class Game {
     text(`SCORE ${this.score}`, width / 2, 20);
 
     textAlign(RIGHT, CENTER);
-    text(`CAUGHT ${this.caught}`, width - 12, 20);
+    text(`CAUGHT ${this.caught} | GOLD ${this.money}`, width - 12, 20);
+
+    const activeBait = this.getActiveBaitConfig();
+    if (activeBait) {
+      textAlign(LEFT, CENTER);
+      textSize(14);
+      fill(255, 240);
+      text(`현재 미끼 : ${activeBait.name}`, 12, 52);
+    }
+
+    this.drawSoundToggle();
 
     // 게이지
     if (this.gaugeActive) {
@@ -588,6 +820,19 @@ class Game {
     text(s, width / 2, height / 2 + 24);
   }
 
+  applyGaugeFeedback(effect) {
+    if (!effect) {
+      this.gaugeEffect = "";
+      this.gaugeEffectTime = millis();
+      return;
+    }
+    this.gaugeEffect = effect;
+    this.gaugeEffectTime = millis();
+    if (typeof playGaugeFeedbackSound === "function") {
+      playGaugeFeedbackSound(effect);
+    }
+  }
+
   // 스페이스 입력 처리 (타이밍 + 연타 페널티)
   handleGaugeHit() {
     if (!this.gaugeActive) return;
@@ -616,8 +861,7 @@ class Game {
         this.hook.forceFullMiss();
         this.spaceSpamStreak = 0;
         // 연타로 인한 완전 실패도 MISS 이펙트 표시
-        this.gaugeEffect = "MISS";
-        this.gaugeEffectTime = millis();
+        this.applyGaugeFeedback("MISS");
         // 방금 물고기를 놓친 시각 기록
         this.lastHookEscapeTime = millis();
         return;
@@ -638,17 +882,15 @@ class Game {
       const perfectThreshold = tolerance * 0.15;
       if (distCenter <= perfectThreshold) {
         mul = 1.4;
-        this.gaugeEffect = "PERFECT";
+        this.applyGaugeFeedback("PERFECT");
       } else {
-        this.gaugeEffect = "HIT";
+        this.applyGaugeFeedback("HIT");
       }
 
-      this.gaugeEffectTime = millis();
       this.hook.pullStep(mul);
       this.gaugeLastHit = millis();
     } else {
-      this.gaugeEffect = "MISS";
-      this.gaugeEffectTime = millis();
+      this.applyGaugeFeedback("MISS");
       const generalEscapeChance = 0.2;
       if (random() < generalEscapeChance) {
         this.hook.forceEscape();
@@ -672,6 +914,18 @@ class Game {
     };
   }
 
+  // 결과 화면 중앙 하단에 로고 표시
+  drawResultLogo() {
+    if (!uiImages.logo) return;
+    const size = 80;
+    const x = width / 2;
+    const y = height / 2 + 100;
+    push();
+    imageMode(CENTER);
+    image(uiImages.logo, x, y, size, size);
+    pop();
+  }
+
   // 결과 화면에서 계절별 도감 표시
   drawResultPokedex() {
     this.drawDimOverlay(230);
@@ -681,7 +935,7 @@ class Game {
     const panelX = width / 2;
     const panelY = height / 2;
     const margin = 20;
-    const rowHeight = 70;
+    const rowHeight = 110;
 
     // 도감 패널 배경
     push();
@@ -690,6 +944,15 @@ class Game {
     strokeWeight(2);
     fill(12, 46, 78, 245); // 진한 남색 배경
     rect(panelX, panelY, panelW, panelH, 20);
+
+    // 도감 좌측 상단 로고
+    if (uiImages.logo) {
+      const logoSize = 80;
+      const logoX = panelX - panelW / 2 + margin + logoSize / 2;
+      const logoY = panelY - panelH / 2 + margin + logoSize / 2;
+      imageMode(CENTER);
+      image(uiImages.logo, logoX, logoY, logoSize, logoSize);
+    }
 
     // 제목 (현재 계절 표시)
     noStroke();
@@ -704,6 +967,14 @@ class Game {
     );
     textStyle(NORMAL);
 
+    textSize(18);
+    fill(255, 240);
+    text(
+      `이번 라운드 수익: ${this.runEarnings || 0} GOLD`,
+      panelX,
+      panelY - panelH / 2 + margin + 44
+    );
+
     // 닫기 버튼
     this.drawCloseButton(this.getPokedexCloseBounds());
 
@@ -711,6 +982,9 @@ class Game {
     const contentYStart = panelY - panelH / 2 + margin + 60;
     const contentAreaH = panelH - margin * 2 - 60;
     const contentAreaW = panelW - margin * 2;
+    const panelLeft = panelX - panelW / 2;
+    const rowLeft = panelLeft + margin + 46;
+    const rowWidth = contentAreaW - 80;
 
     // 모든 물고기가 아니라, 현재 계절 물고기 사용
     const fishes = this.getSeasonFishList();
@@ -724,11 +998,10 @@ class Game {
       const catchCount = Math.floor(earnedScore / fish.score);
 
       // 항목 기준 위치
-      const itemX = (width - panelW) / 2 + 40;
-      const imgSize = 50;
+      const imgSize = 100;
 
       // 이미지가 그려질 절대 좌표 계산 (translate 사용 안 함)
-      const imgCenterX = itemX + imgSize / 2;
+      const imgCenterX = rowLeft + imgSize / 2 + 4;
       const imgCenterY = currentY + rowHeight / 2;
 
       // 화면(스크롤 영역) 밖으로 나가면 그리지 않음 (성능 최적화 + 클리핑 효과)
@@ -736,13 +1009,15 @@ class Game {
         currentY + rowHeight > contentYStart &&
         currentY < contentYStart + contentAreaH
       ) {
-        // 배경 박스 (잡은 경우)
+        // 배경 박스 (잡은 경우는 밝게, 미등록은 옅게)
+        noStroke();
+        rectMode(CORNER);
         if (isCaught) {
-          noStroke();
           fill(255, 255, 255, 25);
-          rectMode(CORNER);
-          rect(itemX, currentY, contentAreaW - 40, rowHeight - 4, 8);
+        } else {
+          fill(255, 255, 255, 12);
         }
+        rect(rowLeft, currentY, rowWidth, rowHeight - 18, 16);
 
         // 이미지 그리기 (절대 좌표 사용)
         push(); // 스타일 격리
@@ -755,9 +1030,9 @@ class Game {
             // 비율 유지 크기 계산
             let scale = 1.0;
             if (img.width > img.height) {
-              scale = (imgSize * 0.8) / img.width; // 너비 기준 맞춤
+              scale = (imgSize * 0.9) / img.width; // 너비 기준 맞춤
             } else {
-              scale = (imgSize * 0.8) / img.height; // 높이 기준 맞춤
+              scale = (imgSize * 0.9) / img.height; // 높이 기준 맞춤
             }
             // 절대 좌표에 그리기
             image(
@@ -771,7 +1046,7 @@ class Game {
             // 이미지 없을 때
             fill(255, 100, 100);
             noStroke();
-            circle(imgCenterX, imgCenterY, imgSize);
+            circle(imgCenterX, imgCenterY, imgSize * 0.82);
             fill(255);
             textAlign(CENTER, CENTER);
             textSize(10);
@@ -781,7 +1056,7 @@ class Game {
           // 못 잡았을 때 (?)
           fill(0, 0, 0, 60);
           noStroke();
-          circle(imgCenterX, imgCenterY, imgSize);
+          circle(imgCenterX, imgCenterY, imgSize * 0.82);
           fill(255, 100);
           textAlign(CENTER, CENTER);
           textSize(24);
@@ -790,8 +1065,8 @@ class Game {
         pop(); // 스타일 격리 끝
 
         // 텍스트 정보 표시
-        const textX = itemX + imgSize + 20;
-        const textW = contentAreaW - imgSize - 60;
+        const textX = imgCenterX + imgSize / 2 + 32;
+        const textW = rowLeft + rowWidth - textX - 18;
 
         if (isCaught) {
           textAlign(LEFT, TOP);
@@ -808,12 +1083,12 @@ class Game {
           textAlign(LEFT, TOP);
           textSize(18);
           textStyle(BOLD);
-          fill(150);
+          fill(210);
           text("???", textX, currentY + 8);
 
           textSize(13);
           textStyle(NORMAL);
-          fill(100);
+          fill(200);
           text("도감에 등록되지 않았습니다.", textX, currentY + 32, textW);
         }
       }
@@ -840,6 +1115,25 @@ class Game {
     pop(); // 도감 패널 전체 push/pop 닫기
   }
 
+  handleResultPokedexLogoClick(px, py) {
+    if (!this.pokedexOpen) return false;
+    const panelW = width * 0.85;
+    const panelH = height * 0.85;
+    const panelX = width / 2;
+    const panelY = height / 2;
+    const margin = 20;
+    const logoSize = 80;
+    const logoX = panelX - panelW / 2 + margin + logoSize / 2;
+    const logoY = panelY - panelH / 2 + margin + logoSize / 2;
+
+    const bounds = { x: logoX, y: logoY, w: logoSize, h: logoSize };
+    if (this.isPointInRect(px, py, bounds)) {
+      window.open("https://mediamba.ssu.ac.kr", "_blank");
+      return true;
+    }
+    return false;
+  }
+
   // 모든 계절 물고기 정보를 하나의 배열로 펼침.
   getAllFishConfigurations() {
     const allFish = [];
@@ -852,5 +1146,128 @@ class Game {
       );
     }
     return allFish;
+  }
+
+  // 미끼 및 상점 관련 보조 메서드들
+  initializeBaitInventory() {
+    if (!Array.isArray(BAIT_TYPES)) return;
+    for (const bait of BAIT_TYPES) {
+      if (bait.price === 0) {
+        this.ownedBaits[bait.id] = true;
+        if (!this.activeBaitId) this.activeBaitId = bait.id;
+      }
+    }
+    if (!this.getBaitById(this.activeBaitId) && BAIT_TYPES.length) {
+      this.activeBaitId = BAIT_TYPES[0].id;
+    }
+  }
+
+  getBaitById(id) {
+    if (!Array.isArray(BAIT_TYPES)) return null;
+    return BAIT_TYPES.find((bait) => bait.id === id) || null;
+  }
+
+  getActiveBaitConfig() {
+    return this.getBaitById(this.activeBaitId) || this.getBaitById("BASIC");
+  }
+
+  getActiveBaitEffects() {
+    const base = {
+      toleranceBonus: 0,
+      valueMultiplier: 1,
+      reelBonus: 1,
+    };
+    if (!this.baitEffectsEnabled) return base;
+
+    const bait = this.getActiveBaitConfig();
+    if (!bait || !bait.effects) return base;
+    return {
+      toleranceBonus: bait.effects.toleranceBonus || 0,
+      valueMultiplier: bait.effects.valueMultiplier || 1,
+      reelBonus: bait.effects.reelBonus || 1,
+    };
+  }
+
+  hasBait(id) {
+    return !!this.ownedBaits[id];
+  }
+
+  canAfford(amount) {
+    return this.money >= amount;
+  }
+
+  buyBait(id) {
+    const bait = this.getBaitById(id);
+    if (!bait || this.hasBait(id)) return false;
+    if (!this.canAfford(bait.price)) return false;
+    this.money -= bait.price;
+    this.ownedBaits[id] = true;
+    if (typeof playRewardSound === "function") {
+      playRewardSound();
+    }
+    return true;
+  }
+
+  equipBait(id) {
+    if (!this.hasBait(id) || this.activeBaitId === id) return false;
+    this.activeBaitId = id;
+    return true;
+  }
+
+  calcFishPayout(fish) {
+    const base = (fish?.score || 0) * 12;
+    const effects = this.getActiveBaitEffects();
+    return Math.floor(base * (effects.valueMultiplier || 1));
+  }
+
+  addMoney(amount) {
+    if (!amount) return;
+    this.money += amount;
+    this.runEarnings += amount;
+  }
+
+  isMenuOverlayOpen() {
+    return this.menuOverlay === "SHOP" || this.menuOverlay === "INVENTORY";
+  }
+
+  openShop() {
+    this.menuOverlay = "SHOP";
+    this.resetMenuOverlayScroll();
+    if (typeof playInventoryMusic === "function") {
+      playInventoryMusic();
+    }
+  }
+
+  openInventory() {
+    this.menuOverlay = "INVENTORY";
+    this.resetMenuOverlayScroll();
+    if (typeof playInventoryMusic === "function") {
+      playInventoryMusic();
+    }
+  }
+
+  closeMenuOverlay() {
+    this.menuOverlay = null;
+    this.resetMenuOverlayScroll();
+    if (this.state === "MENU" || this.state === "INFO") {
+      this.ensureMenuMusic();
+    }
+  }
+
+  resetMenuOverlayScroll() {
+    this.menuOverlayScroll = 0;
+    this.menuOverlayScrollMax = 0;
+    this.menuOverlayContentHeight = 0;
+  }
+
+  scrollMenuOverlay(delta) {
+    if (!this.isMenuOverlayOpen()) return;
+    const limit = Math.max(0, this.menuOverlayScrollMax || 0);
+    if (limit <= 0) return;
+    this.menuOverlayScroll = constrain(
+      this.menuOverlayScroll + delta,
+      0,
+      limit
+    );
   }
 }
