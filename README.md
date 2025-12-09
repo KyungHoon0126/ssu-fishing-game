@@ -1,5 +1,6 @@
-# 🎣 SHOONG! SHOONG!
+<img width="30%" alt="shoong shoong" src="https://github.com/user-attachments/assets/29174eda-a011-4785-88fb-539e6553e077" />
 
+# 🎣 SHOONG! SHOONG!
 > **계절의 흐름을 낚다, 리듬 액션 낚시 게임**  
 > **Interactive Rhythm Action Fishing Game built with p5.js**
 
