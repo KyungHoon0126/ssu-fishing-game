@@ -1215,7 +1215,7 @@ class Game {
   }
 
   calcFishPayout(fish) {
-    const base = (fish?.score || 0) * 12;
+    const base = (fish?.score || 0) * 5;
     const effects = this.getActiveBaitEffects();
     return Math.floor(base * (effects.valueMultiplier || 1));
   }
