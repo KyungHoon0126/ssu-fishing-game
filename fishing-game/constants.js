@@ -219,7 +219,7 @@ const BAIT_TYPES = [
   {
     id: "MID",
     name: "중급 미끼",
-    price: 160,
+    price: 250,
     desc: "탱글한 새우 미끼로, 다소 큰 물고기를 유인하는 데 효과적입니다.",
     img: "새우.png",
     effects: {
@@ -231,7 +231,7 @@ const BAIT_TYPES = [
   {
     id: "PREMIUM",
     name: "고급 미끼",
-    price: 220,
+    price: 1000,
     desc: "싱싱한 오징어 조각으로, 까다로운 상급 어종을 끌어들이는 고급 미끼입니다.",
     img: "오징어.png",
     effects: {
